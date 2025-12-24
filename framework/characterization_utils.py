@@ -1,0 +1,94 @@
+import numpy as np
+from framework import data_types
+
+def dielectric_params_generic(data_medium:data_types.SpectroscopyData, data_air:data_types.SpectroscopyData, freqs:np.ndarray):
+    '''
+    :param data_medium: SpectrumData structure for the frequency sweep in the medium to be characterized
+    :param data_air: SpectrumData structure for the frequency sweep in the air
+    :param freqs: array with the swept frequencies
+    :return: the real and complex parts of the dielectric parameters
+    '''
+
+    #validate data_medium
+    if type(data_medium) != data_types.SpectroscopyData:
+        raise TypeError(f'[dielectric_params_generic] "data_medium" must be a SpectrumData structure! Curr. type = {type(data_medium)}')
+
+    #validate data_air
+    if type(data_air) != data_types.SpectroscopyData:
+        raise TypeError(f'[dielectric_params_generic] "data_air" must be a SpectrumData structure! Curr. type = {type(data_air)}')
+
+    #validate freqs
+    if type(freqs) != np.ndarray:
+        raise TypeError(f'[dielectric_params_generic] "freqs" must be a Numpy Array! Curr. type = {type(freqs)}')
+
+    omegas = 2*np.pi*freqs #Hz to rad/s
+    eps_line_medium = data_medium.Cp/data_air.Cp #real part of the permittivity
+    eps_2line_medium = 1/(omegas*data_medium.Rp*data_air.Cp) #imaginary part of the permittivity
+
+    return eps_line_medium, eps_2line_medium
+
+def dielectric_params_corrected(data_medium:data_types.SpectroscopyData, data_air:data_types.SpectroscopyData, freqs:np.ndarray):
+    '''
+    :param data_medium: SpectrumData structure for the frequency sweep in the medium to be characterized
+    :param data_air: SpectrumData structure for the frequency sweep in the air
+    :param freqs: array with the swept frequencies
+    :return: the real and complex parts of the dielectric parameters, corrected for the commercial cell
+    '''
+
+    #validate data_medium
+    if type(data_medium) != data_types.SpectroscopyData:
+        raise TypeError(
+            f'[dielectric_params_corrected] "data_medium" must be a SpectrumData structure! Curr. type = {type(data_medium)}')
+
+    #validate data_air
+    if type(data_air) != data_types.SpectroscopyData:
+        raise TypeError(
+            f'[dielectric_params_corrected] "data_air" must be a SpectrumData structure! Curr. type = {type(data_air)}')
+
+    #validate freqs
+    if type(freqs) != np.ndarray:
+        raise TypeError(f'[dielectric_params_corrected] "freqs" must be a Numpy Array! Curr. type = {type(freqs)}')
+
+    omegas = 2*np.pi*freqs #Hz to rad/s
+    eps_line_medium = data_medium.Cp/data_air.Cp #real part of the permittivity
+    eps_2line_medium = 1/(omegas*data_medium.Rp*data_air.Cp) #imaginary part of the permittivity
+    eps_medium = (eps_line_medium - 1j*eps_2line_medium).astype('complex') #permittivity
+    alpha_cell = (100*np.abs(eps_medium))/(97.0442*np.abs(eps_medium)+2.9558) #correction factor
+    eps_medium = alpha_cell*eps_medium
+
+    return np.real(eps_medium), np.abs(np.imag(eps_medium))
+
+def dielectric_params_Artemov2013(freqs: np.ndarray, medium='ice'):
+    '''
+    :param freqs: array with the swept frequencies
+    :param medium: which medium to generate the reference curves
+    :return: the real and complex parts of the ideal dielectric parameters for the characterized medium
+    '''
+
+    #V.G. Artemov, A.A. Volkov, 2013.
+    #Water and Ice Dielectric Spectra at 0°C
+
+    #validate freqs
+    if type(freqs) != np.ndarray:
+        raise TypeError(f'[dielectric_params_Artemov2013] "freqs" must be a Numpy Array! Curr. type = {type(freqs)}')
+
+    #validate medium
+    medium = medium.lower() #convert to lowercase
+    valid_media = ["water", "ice"]
+    if medium not in valid_media:
+        raise ValueError(f'[dielectric_params_Artemov2013] "medium" = {medium} not implemented! Try: {valid_media}')
+
+    if medium == "ice":
+        eps_inf = 3 #high frequency limit
+        delta_epsd = 93 #contribution of the dielectric relaxation to the static dielectric constant
+        tau_d = 2.2e-5 #relaxation time
+    elif medium == "water":
+        eps_inf = 5 #high frequency limit
+        delta_epsd = 83 #contribution of the dielectric relaxation to the static dielectric constant
+        tau_d = 1.7e-11 #relaxation time
+
+    omegas = 2*np.pi*freqs #Hz to rad/s
+    eps_line_ideal = eps_inf + (delta_epsd/(1 + (omegas**2)*(tau_d**2))) #real part of the permittivity
+    eps_2line_ideal = (omegas*tau_d)*(delta_epsd/(1 + (omegas**2)*(tau_d**2))) #imaginary part of the permittivity
+
+    return eps_line_ideal, eps_2line_ideal
