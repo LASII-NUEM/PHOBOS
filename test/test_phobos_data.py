@@ -1,0 +1,7 @@
+import numpy as np
+from framework import data_types
+
+#read the files
+filename_flange = '../data/testICE_02_12_25/c_test.csv'
+filename_temp = '../data/testICE_02_12_25/c_temp.lvm'
+phobos_obj = data_types.PHOBOSData(filename_flange, filename_temp, 1, sweeptype="flange", aggregate=np.mean)

@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import datetime
+from framework import file_csv, file_lvm
 
 class FlangeData:
     def __init__(self, electrode_data:np.ndarray, swept_freqs:np.ndarray, n_samples:int, aggregate=None, timezone=-3):
@@ -21,6 +22,7 @@ class FlangeData:
             raise TypeError(f'[FlangeData] Swept frequencies data must be a numpy array! Curr. type = {type(swept_freqs)}')
 
         self.freqs = swept_freqs
+        self.n_freqs = len(swept_freqs)
 
         #validate n_samples
         if not (n_samples > 0):
@@ -42,6 +44,7 @@ class FlangeData:
         #'flange' type sweeps might end before a loop is completed
         self.n_modes = len(set(electrode_data[:int(n_samples*10),1])) #update the attribute
         self.modes = electrode_data[:self.n_modes,1] #update the attribute
+        self.modes = np.array([mode.replace('d:','') for mode in self.modes]) #remove "d:" from the string
         samples_per_loop = self.n_modes*self.n_samples #number of samples expected in a full sweep loop
         total_loops = np.floor(len(valid_electrodes)/samples_per_loop) #number of completed loops in the full acquisition
         last_valid_sample = int(total_loops*samples_per_loop) #index of the last sample in the last valid loop
@@ -93,6 +96,7 @@ class SpectroscopyData:
             raise TypeError(f'[SpectroscopyData] Swept frequencies data must be a numpy array! Curr. type = {type(swept_freqs)}')
 
         self.freqs = swept_freqs
+        self.n_freqs = len(swept_freqs)
 
         #validate n_samples
         if not (n_samples > 0):
@@ -152,3 +156,67 @@ class TemperatureData:
             self.measured_temp[i,:] = [float(temp_sample) for temp_sample in raw_line[1:]] #update temperature readings
 
         self.human_timestamp = self.human_timestamp.astype('datetime64') #convert from datetime object to numpy datetime
+        self.n_sensors = np.shape(self.measured_temp)[1] #number of available thermocouples
+
+class PHOBOSData:
+    def __init__(self, filename_electrode:str, filename_temperature:str, n_samples:int, normalize=True, sweeptype="flange", aggregate=None, timezone=-3):
+        '''
+        :param filename_electrode: path where the .csv is stored
+        :param filename_temperature: path where the .lvm is stored
+        :param n_samples: samples per pair swept
+        :param normalize: apply media-based normalization
+        :param sweeptype: how the data is expected to be organized ('flange' for 10-mode sweep or 'spectrum' for full spectroscopy)
+        :param aggregate: how to organize the data for each mode (None as default)
+        :param timezone: timezone to convert unix timestamp to human timestamp
+        '''
+
+        #process electrode data into its custom structure
+        electrode_data = file_csv.read(filename_electrode, n_samples, sweeptype=sweeptype, aggregate=aggregate, timezone=timezone)
+        self.Cp = electrode_data.Cp #capacitance
+        self.Rp = electrode_data.Rp #resistance
+        self.freqs = electrode_data.freqs #swept frequencies
+        self.n_freqs = electrode_data.n_freqs #number of swept frequencies
+        self.electrode_human_timestamps = electrode_data.human_timestamps #human timestamps
+        self.modes = electrode_data.modes #emitter/receiver modes
+        self.n_modes = electrode_data.n_modes #number of emitter/receiver modes
+
+        #process electrode data into its custom structure
+        temperature_data = file_lvm.read(filename_temperature)
+        self.thermo_readings = temperature_data.measured_temp #temperatures acquired by each thermocouple
+        self.temp_human_timestamp = temperature_data.human_timestamp #human timestamps
+        self.n_thermosensors = temperature_data.n_sensors #number of thermocouples used
+
+        #aligning both sources in time
+        er_start = self.electrode_human_timestamps[0] #timestamp of the first mode sample
+        idx_delta = np.argmin(np.abs(self.temp_human_timestamp-er_start)) #index that minimizes the time delta
+        self.temp_human_timestamp = self.temp_human_timestamp[idx_delta:] #slice the temperature timestamps
+        self.thermo_readings = self.thermo_readings[idx_delta:,:] #slice the temperature readings
+
+        #media-based normalization
+        if normalize:
+            self.Cp_norm = np.zeros_like(self.Cp)
+            self.avg_Cp_norm = np.zeros((len(self.Cp),self.n_freqs))
+            self.Rp_norm = np.zeros_like(self.Rp)
+            self.avg_Rp_norm = np.zeros((len(self.Rp), self.n_freqs))
+            smooth_win = 3 #size of the window to compute the moving average filter
+            filter_kernel = np.ones(smooth_win)/smooth_win #moving average filter kernel
+            ref_win = 10 #size of the window to compute the reference value for each medium
+            for f in range(0, self.n_freqs):
+                for m in range(0, self.n_modes):
+                    Cp_line = self.Cp[:,m,f] #all capacitance readings for a mode at the given freq
+                    Cp_line = np.convolve(Cp_line, filter_kernel, "same") #moving average filter
+                    Rp_line = self.Rp[:,m,f] #all resistance readings for a mode at the given freq
+                    Rp_line = np.convolve(Rp_line, filter_kernel, "same") #moving average filter
+                    n_points = len(Cp_line)
+                    idx_water = np.arange(1, np.min([ref_win, n_points]),1) #points to use as water reference
+                    idx_ice = np.arange(n_points-ref_win, n_points, 1) #point to use as ice reference
+                    water_ref_Cp = np.median(Cp_line[idx_water])
+                    water_ref_Rp = np.median(Rp_line[idx_water])
+                    ice_ref_Cp = np.median(Cp_line[idx_ice])
+                    ice_ref_Rp = np.median(Rp_line[idx_ice])
+                    self.Cp_norm[:,m,f] = 1 - (Cp_line - water_ref_Cp)/(ice_ref_Cp - water_ref_Cp)
+                    self.Rp_norm[:,m,f] = (Rp_line - water_ref_Rp)/(ice_ref_Rp - water_ref_Rp)
+
+                #average the normalized signals over the modes
+                self.avg_Cp_norm[:,f] = np.mean(self.Cp_norm[:,:,f], axis=1)
+                self.avg_Rp_norm[:, f] = np.mean(self.Rp_norm[:, :, f], axis=1)

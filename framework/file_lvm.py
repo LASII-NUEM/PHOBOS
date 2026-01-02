@@ -3,9 +3,9 @@ import os
 import datetime
 from framework import data_types
 
-def read(filename:str, timezone=-3):
+def read(filename:str):
     '''
-    :param filename: path where the .csv is stored
+    :param filename: path where the .lvm is stored
     :param timezone: timezone to convert unix timestamp to human timestamp
     '''
 
