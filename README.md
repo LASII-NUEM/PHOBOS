@@ -1,1 +1,103 @@
-# PHOBOS_toolbox
+# About PHOBOS
+PHOBOS is a Python toolbox developed for applying standard digital signal processing techniques to all electrical impedance spectroscopy (EIS) signals acquired within the **PHOBOS (Phase Hydrate OBservatiOn System)** context. Given the multiple types of acquisition hardware and respective data formats, PHOBOS_toolbox provides methods to automatically extract the required attributes and organize them into custom data structures. As of the latest version of the framework, the supported files are as follows: multi-electrode flange sensor spectroscopy/freerun CSV files (PHOBOS C# acquisition firmware) and ADMX2001 CSV spectroscopy CSV files.
+
+# Running the framework
+To set up the toolbox, first clone this repository on your machine:
+
+```
+cd <desired_path>
+git clone https://github.com/LASII-NUEM/PHOBOS.git
+cd PHOBOS
+```
+
+Then, configure a Python environment. The framework has been successfully tested in Python 3.11 and 3.12. Also, in both Linux and Windows operating systems. Lastly, install the required packages listed in the requirements text file at the root of the repository with:
+
+```
+pip install -r requirements.txt
+```
+
+Once all packages are installed, the toolbox is ready for use. In the following sections, you may find some examples of how to use the PHOBOS tools. 
+
+## Multi-electrode flange sensor freerun files 
+
+The infrastructure requirement is to add the CSV files from the acquisition firmware to a directory at the root of the repository. The name of the directory itself can be arbitrary. However, for standardization, it is recommended that both temperature and electrode files obey the following rules:
+```
+temperature -> ./<data_directory>/<acquisition_directory>/c_temp.lvm
+electrode -> ./<data_directory>/<acquisition_directory>/c_test.csv
+```
+
+To read the contents of the file into a PHOBOSData structure:
+```
+from framework import data_types
+phobos_obj = data_types.PHOBOSData(<electrode_filename>, <temperature_filename>, <number_of_samples_per_acquired_pair>, sweeptype="flange", aggregate=<aggregation_function_for_the_samples>)
+```
+
+Electrode or temperature files can also be processed individually:
+```
+from framework import file_csv
+electrode_obj = file_csv.read(<electrode_filename>, <number_of_samples_per_acquired_pair>, sweeptype="flange", aggregate=<aggregation_function_for_the_samples>)
+```
+and
+```
+from framework import file_lvm
+temp_obj = file_lvm.read(<temperature_filename>)
+```
+
+## Multi-electrode flange sensor spectroscopy files 
+
+The infrastructure requirement is to add the CSV files from the acquisition firmware to a directory at the root of the repository. The name of the directory itself can be arbitrary. However, for standardization, it is recommended that the files be named based on the medium analyzed:
+```
+air -> ./<data_directory>/<acquisition_directory>/c0.csv
+water -> ./<data_directory>/<acquisition_directory>/c1.csv
+ice -> ./<data_directory>/<acquisition_directory>/cice.csv
+```
+
+To read the contents of the file into a SpectroscopyData structure:
+```
+from framework import file_csv
+spec_air_obj = file_csv.read(<air_spectroscopy_filename>, <number_of_samples_per_acquired_pair>, sweeptype="spectrum", aggregate=<aggregation_function_for_the_samples>)
+spec_h2o_obj = file_csv.read(<water_spectroscopy_filename>, <number_of_samples_per_acquired_pair>, sweeptype="spectrum", aggregate=<aggregation_function_for_the_samples>)
+spec_ice_obj = file_csv.read(<ice_spectroscopy_filename>, <number_of_samples_per_acquired_pair>, sweeptype="spectrum", aggregate=<aggregation_function_for_the_samples>)
+```
+
+From the processed files, it is possible to compute the dielectric parameters of the media and compare them to models from the literature. For example, to compute the parameters for ice:
+```
+from framework import characterization_utils
+exp_eps_real, exp_eps_imag = characterization_utils.dielectric_params_corrected(spec_ice_obj, spec_air_obj, spec_ice_obj.freqs) #experimental data
+ideal_eps_real, ideal_eps_imag = characterization_utils.dielectric_params_Artemov2013(spec_ice_obj.freqs, medium="ice") #ideal curves
+```
+
+## ADMX2001 spectroscopy files
+The infrastructure requirement is to add the CSV files from the acquisition firmware to a directory at the root of the repository. The name of the directory itself can be arbitrary. However, for standardization, it is recommended that the files be named based on the medium analyzed:
+```
+air -> ./<data_directory>/<acquisition_directory>/c0.csv
+water -> ./<data_directory>/<acquisition_directory>/c1.csv
+ice -> ./<data_directory>/<acquisition_directory>/cice.csv
+```
+
+To read the contents of the file into a SpectroscopyData structure:
+```
+from framework import file_admx
+spec_air_obj = file_admx.read(<air_spectroscopy_filename>, sweeptype="spectrum")
+spec_h2o_obj = file_admx.read(<water_spectroscopy_filename>,
+sweeptype="spectrum")
+spec_ice_obj = file_admx.read(<ice_spectroscopy_filename>,
+sweeptype="spectrum")
+```
+
+From the processed files, it is possible to compute the dielectric parameters of the media and compare them to models from the literature. For example, to compute the parameters for ice:
+```
+from framework import characterization_utils
+exp_eps_real, exp_eps_imag = characterization_utils.dielectric_params_corrected(spec_ice_obj, spec_air_obj, spec_ice_obj.freqs) #experimental data
+ideal_eps_real, ideal_eps_imag = characterization_utils.dielectric_params_Artemov2013(spec_ice_obj.freqs, medium="ice") #ideal curves
+```
+
+# User guides
+
+In-depth guides of the available methods and data visualization options are available at the [results](https://github.com/LASII-NUEM/PHOBOS/tree/main/results) directory, and are highly recommended for first-time users!
+
+- **Capacitance/Resistance and Temperature data**: https://github.com/LASII-NUEM/PHOBOS/blob/main/results/PHOBOS_acquisition.py
+- **Dielectric parameters of ice (PHOBOS acquisition)**: https://github.com/LASII-NUEM/PHOBOS/blob/main/results/characterization_ice_cell_phobos.py
+- **Dielectric parameters of water (ADMX2001 acquisition)**: https://github.com/LASII-NUEM/PHOBOS/blob/main/results/characterization_water_cell_admx.py
+- **Dielectric parameters of water (PHOBOS acquisition)**: https://github.com/LASII-NUEM/PHOBOS/blob/main/results/characterization_water_cell_phobos.py
+
