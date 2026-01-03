@@ -5,8 +5,8 @@ matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 
 #PHOBOS spectroscopy acquisition
-spec_air_obj = file_csv.read('../data/testICE_10_12_25/c0.csv', 3, "spectrum", np.mean)
-spec_h2o_obj = file_csv.read('../data/testICE_10_12_25/c1.csv', 3, "spectrum", np.mean)
+spec_air_obj = file_csv.read('../data/testICE_10_12_25/c0.csv', n_samples=3, sweeptype="spectrum", aggregate=np.mean)
+spec_h2o_obj = file_csv.read('../data/testICE_10_12_25/c1.csv', n_samples=3, sweeptype="spectrum", aggregate=np.mean)
 
 #dielectric parameters
 exp_eps_real, exp_eps_imag = characterization_utils.dielectric_params_corrected(spec_h2o_obj, spec_air_obj, spec_h2o_obj.freqs) #compute the spectrum based on the experimental data

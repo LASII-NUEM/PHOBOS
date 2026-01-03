@@ -79,12 +79,13 @@ class FlangeData:
         self.human_timestamps = pd.to_datetime(self.unix_timestamps, unit='s').to_numpy()
 
 class SpectroscopyData:
-    def __init__(self, electrode_data:np.ndarray, swept_freqs:np.ndarray, n_samples:int, aggregate=None):
+    def __init__(self, electrode_data:np.ndarray, swept_freqs:np.ndarray, n_samples=1, aggregate=None, hardware="phobos"):
         '''
         :param electrode_data: raw data output from the PHOBOS acquisition system
         :param swept_freqs: array with all swept frequencies
-        :param n_samples: samples per pair swept
+        :param n_samples: samples per pair swept (1 by default)
         :param aggregate: how to organize the data for each mode (None as default)
+        :param hardware: which hardware was used to acquire the signals (different file formats)
         '''
 
         #check if the raw electrode data is a numpy array
@@ -103,23 +104,35 @@ class SpectroscopyData:
             raise ValueError(f'[SpectroscopyData] n_samples = {n_samples}, must be > 0!')
         self.n_samples = n_samples
 
+        #validade hardware input
+        hardware = hardware.lower() #convert to lowercase
+        valid_hardware = ['phobos', 'admx'] #list of valid sweep types
+        if hardware not in valid_hardware:
+            raise ValueError(f'[SpectroscopyData] hardware = {hardware} not implemented! Try: {valid_hardware}')
+
         #initialize class attributes
         self.Cp = None #capacitance readings
         self.Rp = None #resistance readings
 
-        #organize the data based on the CSV format
-        valid_electrodes = electrode_data[:,2:] #filter the array from the first electrode reading
+        if hardware == 'phobos':
+            #organize the data based on the CSV format
+            valid_electrodes = electrode_data[:,2:] #filter the array from the first electrode reading
 
-        #process capacitance and resistance separately
-        idx_cp = np.arange(0,int(2*len(self.freqs)),2) #indexes of each capacitance reading
-        self.Cp = valid_electrodes[:, idx_cp] #update capacitance readings
-        idx_rp = np.arange(1,int(2*len(self.freqs)),2) #indexes of each resistance reading
-        self.Rp = valid_electrodes[:, idx_rp] #update resistance readings
+            #process capacitance and resistance separately
+            idx_cp = np.arange(0,int(2*len(self.freqs)),2) #indexes of each capacitance reading
+            self.Cp = valid_electrodes[:, idx_cp] #update capacitance readings
+            idx_rp = np.arange(1,int(2*len(self.freqs)),2) #indexes of each resistance reading
+            self.Rp = valid_electrodes[:, idx_rp] #update resistance readings
 
-        #apply aggregation if required on the "modes" axis
-        if aggregate is not None:
-            self.Cp = aggregate(self.Cp, axis=0) #mean over the n_samples
-            self.Rp = aggregate(self.Rp, axis=0) #mean over the n_samples
+            #apply aggregation if required on the "modes" axis
+            if aggregate is not None:
+                self.Cp = aggregate(self.Cp, axis=0) #mean over the n_samples
+                self.Rp = aggregate(self.Rp, axis=0) #mean over the n_samples
+
+        elif hardware == 'admx':
+            self.freqs *= 1000 #kHz to Hz
+            self.Cp = electrode_data[:,-2].astype('float') #update capacitance readings
+            self.Rp = electrode_data[:,-1].astype('float') #update resistance readings
 
 class TemperatureData:
     def __init__(self, thermo_data:np.ndarray, abs_timestamp:datetime.datetime, ):
