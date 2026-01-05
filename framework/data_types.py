@@ -1,10 +1,10 @@
 import numpy as np
 import pandas as pd
 import datetime
-from framework import file_csv, file_lvm
+from framework import file_lcr, file_lvm
 
 class FlangeData:
-    def __init__(self, electrode_data:np.ndarray, swept_freqs:np.ndarray, n_samples:int, aggregate=None, timezone=-3):
+    def __init__(self, electrode_data:np.ndarray, swept_freqs:np.ndarray, n_samples=1, aggregate=None, timezone=-3):
         '''
         :param electrode_data: raw data output from the PHOBOS acquisition system
         :param swept_freqs: array with all swept frequencies
@@ -59,10 +59,10 @@ class FlangeData:
         #process capacitance and resistance separately
         idx_cp = np.arange(0,int(2*len(self.freqs)),2) #indexes of each capacitance reading
         self.Cp = valid_electrodes[:, idx_cp] #update capacitance readings
-        self.Cp = np.reshape(self.Cp, [self.n_samples, int(total_loops), self.n_modes, len(self.freqs)]) #[samples, modes, readings, freqs]
+        self.Cp = np.reshape(self.Cp, [self.n_samples, int(total_loops), self.n_modes, len(self.freqs)]) #[samples, readings, modes, freqs]
         idx_rp = np.arange(1,int(2*len(self.freqs)),2) #indexes of each resistance reading
         self.Rp = valid_electrodes[:, idx_rp] #update resistance readings
-        self.Rp = np.reshape(self.Rp, [self.n_samples, int(total_loops), self.n_modes, len(self.freqs)]) #[samples, modes, readings, freqs]
+        self.Rp = np.reshape(self.Rp, [self.n_samples, int(total_loops), self.n_modes, len(self.freqs)]) #[samples, readings, modes, freqs]
 
         #apply aggregation if required on the "modes" axis
         if aggregate is not None:
@@ -72,6 +72,80 @@ class FlangeData:
             self.Rp = aggregate(self.Rp, axis=0) #mean over the n_samples
         else:
             self.unix_timestamps = self.unix_timestamps[0,-1,:] #use the timestamps of the last registered mode per loop
+
+        #convert unix timestamps to human timestamps
+        self.unix_timestamps /= 1000 #[ms] to [s]
+        self.unix_timestamps += timezone*3600 #convert timezone
+        self.human_timestamps = pd.to_datetime(self.unix_timestamps, unit='s').to_numpy()
+
+class CommercialCellData:
+    def __init__(self, electrode_data:np.ndarray, swept_freqs:np.ndarray, n_samples=1, aggregate=None, timezone=-3):
+        '''
+        :param electrode_data: raw data output from the PHOBOS acquisition system
+        :param swept_freqs: array with all swept frequencies
+        :param n_samples: samples per pair swept
+        :param aggregate: how to organize the data for each mode (None as default)
+        :param timezone: timezone to convert unix timestamp to human timestamp
+        '''
+
+        #check if the raw electrode data is a numpy array
+        if type(electrode_data) != np.ndarray:
+            raise TypeError(f'[CommercialCell] Raw electrode data must be a numpy array! Curr. type = {type(electrode_data)}')
+
+        #check if the swept_frequencies argument is a list
+        if type(swept_freqs) != np.ndarray:
+            raise TypeError(f'[CommercialCell] Swept frequencies data must be a numpy array! Curr. type = {type(swept_freqs)}')
+
+        self.freqs = swept_freqs
+        self.n_freqs = len(swept_freqs)
+
+        #validate n_samples
+        if not (n_samples > 0):
+            raise ValueError(f'[CommercialCell] n_samples = {n_samples}, must be > 0!')
+        self.n_samples = n_samples
+
+        #initialize class attributes
+        self.n_modes = None #number of emitter/receiver pairs
+        self.modes = None #emitter/receiver pairs
+        self.unix_timestamps = None #unix timestamps
+        self.human_timestamps = None #human timestamps
+        self.Cp = None #capacitance readings
+        self.Rp = None #resistance readings
+
+        #organize the data based on the CSV format
+        self.unix_timestamps = electrode_data[:,0] #update timestamps in [ms]
+        valid_electrodes = electrode_data[:,2:] #filter the array from the first electrode reading
+
+        #'cell' type sweeps might end before a loop is completed
+        self.n_modes = 1 #only one e/r is used
+        self.modes = ["1-2"] #update the attribute
+        samples_per_loop = self.n_modes*self.n_samples #number of samples expected in a full sweep loop
+        total_loops = np.floor(len(valid_electrodes)/samples_per_loop) #number of completed loops in the full acquisition
+        last_valid_sample = int(total_loops*samples_per_loop) #index of the last sample in the last valid loop
+        valid_electrodes = valid_electrodes[:last_valid_sample,:] #filter raw data up to the last valid sample
+        self.unix_timestamps = self.unix_timestamps[:last_valid_sample] #filter raw timestamps up to the last valid sample
+
+        if self.n_samples < 2:
+            self.unix_timestamps = self.unix_timestamps[np.newaxis,:] #add a new dimension to avoid computing for all samples
+
+        self.unix_timestamps = np.reshape(self.unix_timestamps, [self.n_samples, int(total_loops), self.n_modes]) #[samples, modes, readings]
+
+        #process capacitance and resistance separately
+        idx_cp = np.arange(0,int(2*len(self.freqs)),2) #indexes of each capacitance reading
+        self.Cp = valid_electrodes[:, idx_cp] #update capacitance readings
+        self.Cp = np.reshape(self.Cp, [self.n_samples, int(total_loops), self.n_modes, len(self.freqs)]) #[samples, readings, modes, freqs]
+        idx_rp = np.arange(1,int(2*len(self.freqs)),2) #indexes of each resistance reading
+        self.Rp = valid_electrodes[:, idx_rp] #update resistance readings
+        self.Rp = np.reshape(self.Rp, [self.n_samples, int(total_loops), self.n_modes, len(self.freqs)]) #[samples, readings, modes, freqs]
+
+        #apply aggregation if required on the "samples" axis
+        if aggregate is not None:
+            self.unix_timestamps = aggregate(self.unix_timestamps, axis=2) #mean over the modes
+            self.unix_timestamps = self.unix_timestamps[-1,:] #use the timestamps of the last registered mode per loop
+            self.Cp = aggregate(self.Cp, axis=0) #mean over the n_samples
+            self.Rp = aggregate(self.Rp, axis=0) #mean over the n_samples
+        else:
+            self.unix_timestamps = self.unix_timestamps[0,:,-1] #use the timestamps of the last registered mode per loop
 
         #convert unix timestamps to human timestamps
         self.unix_timestamps /= 1000 #[ms] to [s]
@@ -172,7 +246,7 @@ class TemperatureData:
         self.n_sensors = np.shape(self.measured_temp)[1] #number of available thermocouples
 
 class PHOBOSData:
-    def __init__(self, filename_electrode:str, filename_temperature:str, n_samples:int, normalize=True, sweeptype="flange", aggregate=None, timezone=-3):
+    def __init__(self, filename_electrode:str, filename_temperature=None, n_samples=1, normalize=True, sweeptype="flange", aggregate=None, timezone=-3):
         '''
         :param filename_electrode: path where the .csv is stored
         :param filename_temperature: path where the .lvm is stored
@@ -184,7 +258,7 @@ class PHOBOSData:
         '''
 
         #process electrode data into its custom structure
-        electrode_data = file_csv.read(filename_electrode, n_samples, sweeptype=sweeptype, aggregate=aggregate, timezone=timezone)
+        electrode_data = file_lcr.read(filename_electrode, n_samples, sweeptype=sweeptype, aggregate=aggregate, timezone=timezone)
         self.Cp = electrode_data.Cp #capacitance
         self.Rp = electrode_data.Rp #resistance
         self.freqs = electrode_data.freqs #swept frequencies
@@ -193,17 +267,20 @@ class PHOBOSData:
         self.modes = electrode_data.modes #emitter/receiver modes
         self.n_modes = electrode_data.n_modes #number of emitter/receiver modes
 
-        #process electrode data into its custom structure
-        temperature_data = file_lvm.read(filename_temperature)
-        self.thermo_readings = temperature_data.measured_temp #temperatures acquired by each thermocouple
-        self.temp_human_timestamp = temperature_data.human_timestamp #human timestamps
-        self.n_thermosensors = temperature_data.n_sensors #number of thermocouples used
+        #process temperature data into its custom structure
+        try:
+            temperature_data = file_lvm.read(filename_temperature)
+            self.thermo_readings = temperature_data.measured_temp #temperatures acquired by each thermocouple
+            self.temp_human_timestamp = temperature_data.human_timestamp #human timestamps
+            self.n_thermosensors = temperature_data.n_sensors #number of thermocouples
 
-        #aligning both sources in time
-        er_start = self.electrode_human_timestamps[0] #timestamp of the first mode sample
-        idx_delta = np.argmin(np.abs(self.temp_human_timestamp-er_start)) #index that minimizes the time delta
-        self.temp_human_timestamp = self.temp_human_timestamp[idx_delta:] #slice the temperature timestamps
-        self.thermo_readings = self.thermo_readings[idx_delta:,:] #slice the temperature readings
+            #aligning both sources in time
+            er_start = self.electrode_human_timestamps[0]  # timestamp of the first mode sample
+            idx_delta = np.argmin(np.abs(self.temp_human_timestamp - er_start))  # index that minimizes the time delta
+            self.temp_human_timestamp = self.temp_human_timestamp[idx_delta:]  # slice the temperature timestamps
+            self.thermo_readings = self.thermo_readings[idx_delta:, :]  # slice the temperature readings
+        except:
+            print(f'[PHOBOSData] No temperature file found, processing data without it!')
 
         #media-based normalization
         if normalize:

@@ -23,7 +23,7 @@ def read(filename:str, n_samples:int, sweeptype="flange", aggregate=None, timezo
 
     #validate sweeptype
     sweeptype = sweeptype.lower() #convert to lowercase
-    valid_sweeps = ['flange', 'spectrum'] #list of valid sweep types
+    valid_sweeps = ['flange', 'spectrum', 'cell'] #list of valid sweep types
     if sweeptype not in valid_sweeps:
         raise ValueError(f'[file_phobos] sweeptype = {sweeptype} not implemented! Try: {valid_sweeps}')
 
@@ -40,6 +40,12 @@ def read(filename:str, n_samples:int, sweeptype="flange", aggregate=None, timezo
         swept_freqs = [float(freq.replace(" ", "").replace("Cp", "")) for freq in header_data if 'Cp' in freq]
         swept_freqs = np.array(swept_freqs)  # convert to numpy array
         data = data_types.FlangeData(raw_data, swept_freqs, n_samples, aggregate=aggregate, timezone=timezone)
+
+    elif sweeptype == "cell":
+        swept_freqs = [float(freq.replace(" ", "").replace("Z", "")) for freq in header_data if 'Z' in freq]
+        swept_freqs = np.array(swept_freqs)  # convert to numpy array
+        data = data_types.CommercialCellData(raw_data, swept_freqs, n_samples, aggregate=aggregate)
+
     elif sweeptype == "spectrum":
         swept_freqs = [float(freq.replace(" ", "").replace("Z", "")) for freq in header_data if 'Z' in freq]
         swept_freqs = np.array(swept_freqs)  # convert to numpy array
