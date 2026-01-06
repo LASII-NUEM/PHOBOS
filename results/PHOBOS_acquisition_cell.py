@@ -8,14 +8,14 @@ import matplotlib.dates as mdates
 #read the files
 filename_flange = '../data/testICE_10_12_25/c_test.csv'
 filename_temp = '../data/testICE_10_12_25/c_temp.lvm'
-phobos_obj = data_types.PHOBOSData(filename_flange, n_samples=1, sweeptype="cell", aggregate=np.mean)
+phobos_obj = data_types.PHOBOSData(filename_flange, n_samples=1, sweeptype="cell", acquisition_mode="freq", aggregate=np.mean)
 
 #plot temperature vs. capacitance normalized
 fig, ax1 = plt.subplots()
 elec_colors = ["green", "blue"]
 elec_labels = ['Avg. Cp norm. @ 10 kHz', 'Avg. Cp @ 1 MHz']
 for freq_idx in range(0, phobos_obj.n_freqs):
-    ax1.plot(phobos_obj.electrode_human_timestamps, phobos_obj.avg_Cp_norm[:,freq_idx],
+    ax1.plot(phobos_obj.electrode_human_timestamps, phobos_obj.agg_Cp_norm[:,freq_idx],
              color=elec_colors[freq_idx],
              linestyle='dashed',
              label=elec_labels[freq_idx])
@@ -35,7 +35,7 @@ fig, ax1 = plt.subplots()
 elec_colors = ["green", "blue"]
 elec_labels = ['Avg. Rp norm. @ 10 kHz', 'Avg. Rp norm. @ 1 MHz']
 for freq_idx in range(0, phobos_obj.n_freqs):
-    ax1.plot(phobos_obj.electrode_human_timestamps, phobos_obj.avg_Rp_norm[:, freq_idx],
+    ax1.plot(phobos_obj.electrode_human_timestamps, phobos_obj.agg_Rp_norm[:, freq_idx],
              color=elec_colors[freq_idx],
              linestyle='dashed',
              label=elec_labels[freq_idx])

@@ -8,14 +8,14 @@ import matplotlib.dates as mdates
 #read the files
 filename_flange = '../data/testICE_02_12_25/c_test.csv'
 filename_temp = '../data/testICE_02_12_25/c_temp.lvm'
-phobos_obj = data_types.PHOBOSData(filename_flange, filename_temperature=filename_temp, n_samples=1, sweeptype="flange", aggregate=np.mean)
+phobos_obj = data_types.PHOBOSData(filename_flange, filename_temperature=filename_temp, n_samples=1, sweeptype="flange", acquisition_mode="freq", aggregate=np.mean)
 
 #plot temperature vs. capacitance normalized
 fig, ax1 = plt.subplots()
 elec_colors = ["green", "blue"]
 elec_labels = ['Avg. Cp norm. @ 10 kHz', 'Avg. Cp @ 1 MHz']
 for freq_idx in range(0, phobos_obj.n_freqs):
-    ax1.plot(phobos_obj.electrode_human_timestamps, phobos_obj.avg_Cp_norm[:,freq_idx],
+    ax1.plot(phobos_obj.electrode_human_timestamps, phobos_obj.agg_Cp_norm[:,freq_idx],
              color=elec_colors[freq_idx],
              linestyle='dashed',
              label=elec_labels[freq_idx])
@@ -51,7 +51,7 @@ fig, ax1 = plt.subplots()
 elec_colors = ["green", "blue"]
 elec_labels = ['Avg. Rp norm. @ 10 kHz', 'Avg. Rp norm. @ 1 MHz']
 for freq_idx in range(0, phobos_obj.n_freqs):
-    ax1.plot(phobos_obj.electrode_human_timestamps, phobos_obj.avg_Rp_norm[:, freq_idx],
+    ax1.plot(phobos_obj.electrode_human_timestamps, phobos_obj.agg_Rp_norm[:, freq_idx],
              color=elec_colors[freq_idx],
              linestyle='dashed',
              label=elec_labels[freq_idx])
@@ -99,7 +99,7 @@ for f in range(0, phobos_obj.n_freqs):
                      color=(0.7, 0.7, 0.7),
                      marker='o',
                      label=mode_labels[f])
-    plt.plot(phobos_obj.electrode_human_timestamps, phobos_obj.avg_Cp_norm[:, f],
+    plt.plot(phobos_obj.electrode_human_timestamps, phobos_obj.agg_Cp_norm[:, f],
              color='tab:orange',
              label=avg_labels[f])
     plt.ylabel('Normalized capacitance [-]')
@@ -128,7 +128,7 @@ for f in range(0, phobos_obj.n_freqs):
                      color=(0.7, 0.7, 0.7),
                      marker='o',
                      label=mode_labels[f])
-    plt.plot(phobos_obj.electrode_human_timestamps, phobos_obj.avg_Rp_norm[:, f],
+    plt.plot(phobos_obj.electrode_human_timestamps, phobos_obj.agg_Rp_norm[:, f],
              color='tab:orange',
              label=avg_labels[f])
     plt.ylabel('Normalized resistance [-]')

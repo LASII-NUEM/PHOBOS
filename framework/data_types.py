@@ -246,19 +246,20 @@ class TemperatureData:
         self.n_sensors = np.shape(self.measured_temp)[1] #number of available thermocouples
 
 class PHOBOSData:
-    def __init__(self, filename_electrode:str, filename_temperature=None, n_samples=1, normalize=True, sweeptype="flange", aggregate=None, timezone=-3):
+    def __init__(self, filename_electrode:str, filename_temperature=None, n_samples=1, normalize=True, sweeptype="flange", acquisition_mode="freq", aggregate=None, timezone=-3):
         '''
         :param filename_electrode: path where the .csv is stored
         :param filename_temperature: path where the .lvm is stored
         :param n_samples: samples per pair swept
         :param normalize: apply media-based normalization
-        :param sweeptype: how the data is expected to be organized ('flange' for 10-mode sweep or 'spectrum' for full spectroscopy)
+        :param sweeptype: which hardware was used to acquire the signals
+        :param acquisition_mode: how the data is expected to be organized ('flange' for 10-mode sweep or 'spectrum' for full spectroscopy)
         :param aggregate: how to organize the data for each mode (None as default)
         :param timezone: timezone to convert unix timestamp to human timestamp
         '''
 
         #process electrode data into its custom structure
-        electrode_data = file_lcr.read(filename_electrode, n_samples, sweeptype=sweeptype, aggregate=aggregate, timezone=timezone)
+        electrode_data = file_lcr.read(filename_electrode, n_samples, sweeptype=sweeptype, acquisition_mode=acquisition_mode, aggregate=aggregate, timezone=timezone)
         self.Cp = electrode_data.Cp #capacitance
         self.Rp = electrode_data.Rp #resistance
         self.freqs = electrode_data.freqs #swept frequencies
@@ -285,9 +286,9 @@ class PHOBOSData:
         #media-based normalization
         if normalize:
             self.Cp_norm = np.zeros_like(self.Cp)
-            self.avg_Cp_norm = np.zeros((len(self.Cp),self.n_freqs))
+            self.agg_Cp_norm = np.zeros((len(self.Cp),self.n_freqs))
             self.Rp_norm = np.zeros_like(self.Rp)
-            self.avg_Rp_norm = np.zeros((len(self.Rp), self.n_freqs))
+            self.agg_Rp_norm = np.zeros((len(self.Rp), self.n_freqs))
             smooth_win = 3 #size of the window to compute the moving average filter
             filter_kernel = np.ones(smooth_win)/smooth_win #moving average filter kernel
             ref_win = 10 #size of the window to compute the reference value for each medium
@@ -307,6 +308,6 @@ class PHOBOSData:
                     self.Cp_norm[:,m,f] = 1 - (Cp_line - water_ref_Cp)/(ice_ref_Cp - water_ref_Cp)
                     self.Rp_norm[:,m,f] = (Rp_line - water_ref_Rp)/(ice_ref_Rp - water_ref_Rp)
 
-                #average the normalized signals over the modes
-                self.avg_Cp_norm[:,f] = np.mean(self.Cp_norm[:,:,f], axis=1)
-                self.avg_Rp_norm[:, f] = np.mean(self.Rp_norm[:, :, f], axis=1)
+                #aggregate the normalized signals over the modes
+                self.agg_Cp_norm[:,f] = aggregate(self.Cp_norm[:,:,f], axis=1)
+                self.agg_Rp_norm[:, f] = aggregate(self.Rp_norm[:, :, f], axis=1)

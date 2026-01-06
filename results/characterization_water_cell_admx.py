@@ -5,8 +5,8 @@ matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 
 #ADMX2001 spectroscopy acquisition
-spec_air_obj = file_admx.read('../data/testICE_16_12_25/c0.csv', sweeptype="spectrum")
-spec_ice_obj = file_admx.read('../data/testICE_16_12_25/c1.csv', sweeptype="spectrum")
+spec_air_obj = file_admx.read('../data/testICE_16_12_25/c0.csv', sweeptype="cell", acquisition_mode="spectrum")
+spec_ice_obj = file_admx.read('../data/testICE_16_12_25/c1.csv', sweeptype="cell", acquisition_mode="spectrum")
 
 #dielectric parameters
 exp_eps_real, exp_eps_imag = characterization_utils.dielectric_params_corrected(spec_ice_obj, spec_air_obj, spec_ice_obj.freqs) #compute the spectrum based on the experimental data
