@@ -23,7 +23,10 @@ def dielectric_params_generic(data_medium:data_types.SpectroscopyData, data_air:
 
     omegas = 2*np.pi*freqs #Hz to rad/s
     eps_line_medium = data_medium.Cp/data_air.Cp #real part of the permittivity
-    eps_2line_medium = 1/(omegas*data_medium.Rp*data_air.Cp) #imaginary part of the permittivity
+    if (data_medium.Rp.ndim==1)&(data_air.Cp.ndim==1):
+        eps_2line_medium = 1/(omegas*data_medium.Rp*data_air.Cp) #imaginary part of the permittivity
+    elif (data_medium.Rp.ndim > 1) & (data_air.Cp.ndim > 1):
+        eps_2line_medium = 1/(omegas[:,np.newaxis]*data_medium.Rp*data_air.Cp) #imaginary part of the permittivity
 
     return eps_line_medium, eps_2line_medium
 

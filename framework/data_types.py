@@ -153,11 +153,12 @@ class CommercialCellData:
         self.human_timestamps = pd.to_datetime(self.unix_timestamps, unit='s').to_numpy()
 
 class SpectroscopyData:
-    def __init__(self, electrode_data:np.ndarray, swept_freqs:np.ndarray, n_samples=1, aggregate=None, hardware="phobos"):
+    def __init__(self, electrode_data:np.ndarray, swept_freqs:np.ndarray, n_samples=1, sweeptype="flange", aggregate=None, hardware="lcr"):
         '''
         :param electrode_data: raw data output from the PHOBOS acquisition system
         :param swept_freqs: array with all swept frequencies
         :param n_samples: samples per pair swept (1 by default)
+        :param sweeptype: which hardware was used to acquire the signals
         :param aggregate: how to organize the data for each mode (None as default)
         :param hardware: which hardware was used to acquire the signals (different file formats)
         '''
@@ -170,6 +171,12 @@ class SpectroscopyData:
         if type(swept_freqs) != np.ndarray:
             raise TypeError(f'[SpectroscopyData] Swept frequencies data must be a numpy array! Curr. type = {type(swept_freqs)}')
 
+        #validate sweeptype
+        sweeptype = sweeptype.lower()  # convert to lowercase
+        valid_sweeps = ['flange', 'cell', 'custom']  # list of valid sweep types
+        if sweeptype not in valid_sweeps:
+            raise ValueError(f'[SpectroscopyData] sweeptype = {sweeptype} not implemented! Try: {valid_sweeps}')
+
         self.freqs = swept_freqs
         self.n_freqs = len(swept_freqs)
 
@@ -180,7 +187,7 @@ class SpectroscopyData:
 
         #validade hardware input
         hardware = hardware.lower() #convert to lowercase
-        valid_hardware = ['phobos', 'admx'] #list of valid sweep types
+        valid_hardware = ['lcr', 'admx'] #list of valid sweep types
         if hardware not in valid_hardware:
             raise ValueError(f'[SpectroscopyData] hardware = {hardware} not implemented! Try: {valid_hardware}')
 
@@ -188,25 +195,52 @@ class SpectroscopyData:
         self.Cp = None #capacitance readings
         self.Rp = None #resistance readings
 
-        if hardware == 'phobos':
-            #organize the data based on the CSV format
-            valid_electrodes = electrode_data[:,2:] #filter the array from the first electrode reading
+        if hardware == 'lcr':
+            if sweeptype == 'cell':
+                self.sweeptype = sweeptype  # store the sweeptype
 
-            #process capacitance and resistance separately
-            idx_cp = np.arange(0,int(2*len(self.freqs)),2) #indexes of each capacitance reading
-            self.Cp = valid_electrodes[:, idx_cp] #update capacitance readings
-            idx_rp = np.arange(1,int(2*len(self.freqs)),2) #indexes of each resistance reading
-            self.Rp = valid_electrodes[:, idx_rp] #update resistance readings
+                #organize the data based on the CSV format
+                valid_electrodes = electrode_data[:,2:] #filter the array from the first electrode reading
 
-            #apply aggregation if required on the "modes" axis
-            if aggregate is not None:
-                self.Cp = aggregate(self.Cp, axis=0) #mean over the n_samples
-                self.Rp = aggregate(self.Rp, axis=0) #mean over the n_samples
+                #process capacitance and resistance separately
+                idx_cp = np.arange(0,int(2*len(self.freqs)),2) #indexes of each capacitance reading
+                self.Cp = valid_electrodes[:, idx_cp] #update capacitance readings
+                idx_rp = np.arange(1,int(2*len(self.freqs)),2) #indexes of each resistance reading
+                self.Rp = valid_electrodes[:, idx_rp] #update resistance readings
+
+                #apply aggregation if required on the "modes" axis
+                if aggregate is not None:
+                    self.Cp = aggregate(self.Cp, axis=0) #mean over the n_samples
+                    self.Rp = aggregate(self.Rp, axis=0) #mean over the n_samples
+
+            elif sweeptype == 'flange':
+                self.sweeptype = sweeptype #store the sweeptype
+
+                #infer the modes of e/r
+                self.n_modes = len(set(electrode_data[:int(n_samples * 10), 1])) #number of unique modes up to 10 samples
+                self.modes = electrode_data[:self.n_modes, 1] #filter the modes
+                self.modes = np.array([mode.replace('d:', '') for mode in self.modes]) #remove "d:" from the string
+                electrode_data = electrode_data[:,2:] #filter out timestamps and mdoes
+                idx_cp = np.arange(0, int(2*len(self.freqs)), 2) #indexes of each capacitance reading
+                self.Cp = electrode_data[:,idx_cp].astype('float') #update capacitance readings
+                self.Cp = np.reshape(self.Cp, [self.n_samples, len(self.freqs), self.n_modes]) #[samples, readings, modes]
+                idx_rp = np.arange(1, int(2*len(self.freqs)), 2) #indexes of each resistance reading
+                self.Rp = electrode_data[:,idx_rp].astype('float') #update resistance readings
+                self.Rp = np.reshape(self.Rp,[self.n_samples, len(self.freqs), self.n_modes]) #[samples, readings, modes]
+
+                #apply aggregation if required on the "modes" axis
+                if aggregate is not None:
+                    self.agg_Cp = aggregate(self.Cp, axis=0) #mean over the n_samples
+                    self.agg_Rp = aggregate(self.Rp, axis=0) #mean over the n_samples
 
         elif hardware == 'admx':
-            self.freqs *= 1000 #kHz to Hz
-            self.Cp = electrode_data[:,-2].astype('float') #update capacitance readings
-            self.Rp = electrode_data[:,-1].astype('float') #update resistance readings
+            if sweeptype == 'cell':
+                self.sweeptype = sweeptype  # store the sweeptype
+                self.freqs *= 1000 #kHz to Hz
+                self.Cp = electrode_data[:,-2].astype('float') #update capacitance readings
+                self.Rp = electrode_data[:,-1].astype('float') #update resistance readings
+            elif sweeptype == 'flange':
+                print(f'[SpectroscopyData] sweeptype = {sweeptype} not implemented!')
 
 class TemperatureData:
     def __init__(self, thermo_data:np.ndarray, abs_timestamp:datetime.datetime, ):

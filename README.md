@@ -62,6 +62,24 @@ from framework import file_lcr
 electrode_obj = file_lcr.read(<electrode_filename>, n_samples=<number_of_samples_per_acquired_pair>, sweeptype="cell", acquisition_mode="freq", aggregate=<aggregation_function_for_the_samples>)
 ```
 
+## Multi-electrode cell sensor spectroscopy files 
+
+The infrastructure requirement is to add the CSV files from the acquisition firmware to a directory at the root of the repository. The name of the directory itself can be arbitrary. However, for standardization, it is recommended that the files be named based on the medium analyzed:
+```
+air -> ./<data_directory>/<acquisition_directory>/c0.csv
+water -> ./<data_directory>/<acquisition_directory>/c1.csv
+ice -> ./<data_directory>/<acquisition_directory>/cice.csv
+```
+
+To read the contents of the file into a SpectroscopyData structure:
+```
+from framework import file_lcr
+spec_air_obj = file_lcr.read(<air_spectroscopy_filename>, n_samples=<number_of_samples_per_acquired_pair>, sweeptype="flange", acquisition_mode="spectrum", aggregate=<aggregation_function_for_the_samples>)
+spec_h2o_obj = file_lcr.read(<water_spectroscopy_filename>, n_samples=<number_of_samples_per_acquired_pair>, sweeptype="flange", acquisition_mode="spectrum", aggregate=<aggregation_function_for_the_samples>)
+spec_ice_obj = file_lcr.read(<ice_spectroscopy_filename>, n_samples=<number_of_samples_per_acquired_pair>, sweeptype="flange", acquisition_mode="spectrum", aggregate=<aggregation_function_for_the_samples>)
+```
+
+
 ## Single-electrode cell sensor spectroscopy files 
 
 The infrastructure requirement is to add the CSV files from the acquisition firmware to a directory at the root of the repository. The name of the directory itself can be arbitrary. However, for standardization, it is recommended that the files be named based on the medium analyzed:
@@ -115,7 +133,9 @@ In-depth guides of the available methods and data visualization options are avai
 
 - **Capacitance/Resistance and Temperature data (Flange)**: https://github.com/LASII-NUEM/PHOBOS/blob/main/results/PHOBOS_acquisition_flange.py
 - **Capacitance/Resistance and Temperature data (Commercial Cell)**: https://github.com/LASII-NUEM/PHOBOS/blob/main/results/PHOBOS_acquisition_cell.py
-- **Dielectric parameters of ice (PHOBOS acquisition)**: https://github.com/LASII-NUEM/PHOBOS/blob/main/results/characterization_ice_cell_phobos.py
+- **Dielectric parameters of ice (PHOBOS acquisition flange)**: https://github.com/LASII-NUEM/PHOBOS/blob/main/results/characterization_ice_flange_phobos.py
+- **Dielectric parameters of ice (PHOBOS acquisition cell)**: https://github.com/LASII-NUEM/PHOBOS/blob/main/results/characterization_ice_cell_phobos.py
 - **Dielectric parameters of water (ADMX2001 acquisition)**: https://github.com/LASII-NUEM/PHOBOS/blob/main/results/characterization_water_cell_admx.py
-- **Dielectric parameters of water (PHOBOS acquisition)**: https://github.com/LASII-NUEM/PHOBOS/blob/main/results/characterization_water_cell_phobos.py
+- **Dielectric parameters of water (PHOBOS acquisition flange)**: https://github.com/LASII-NUEM/PHOBOS/blob/main/results/characterization_water_flange_phobos.py
+- **Dielectric parameters of water (PHOBOS acquisition cell)**: https://github.com/LASII-NUEM/PHOBOS/blob/main/results/characterization_water_cell_phobos.py
 
