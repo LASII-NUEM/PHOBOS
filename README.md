@@ -29,13 +29,13 @@ electrode -> ./<data_directory>/<acquisition_directory>/c_test.csv
 To read the contents of the file into a PHOBOSData structure:
 ```
 from framework import data_types
-phobos_obj = data_types.PHOBOSData(<electrode_filename>, <temperature_filename>, n_samples=<number_of_samples_per_acquired_pair>, sweeptype="flange", aggregate=<aggregation_function_for_the_samples>)
+phobos_obj = data_types.PHOBOSData(<electrode_filename>, <temperature_filename>, n_samples=<number_of_samples_per_acquired_pair>, sweeptype="flange", acquisition_mode="freq", aggregate=<aggregation_function_for_the_samples>)
 ```
 
 Electrode or temperature files can also be processed individually:
 ```
 from framework import file_lcr
-electrode_obj = file_lcr.read(<electrode_filename>, n_samples=<number_of_samples_per_acquired_pair>, sweeptype="flange", aggregate=<aggregation_function_for_the_samples>)
+electrode_obj = file_lcr.read(<electrode_filename>, n_samples=<number_of_samples_per_acquired_pair>, sweeptype="flange", acquisition_mode="freq", aggregate=<aggregation_function_for_the_samples>)
 ```
 and
 ```
@@ -43,7 +43,7 @@ from framework import file_lvm
 temp_obj = file_lvm.read(<temperature_filename>)
 ```
 
-## Multi-electrode sensor commercial cell files 
+## Single-electrode sensor commercial cell files 
 
 The infrastructure requirement is to add the CSV files from the acquisition firmware to a directory at the root of the repository. The name of the directory itself can be arbitrary. However, for standardization, it is recommended that both temperature and electrode files obey the following rules:
 ```
@@ -53,16 +53,16 @@ electrode -> ./<data_directory>/<acquisition_directory>/c_test.csv
 To read the contents of the file into a PHOBOSData structure:
 ```
 from framework import data_types
-phobos_obj = data_types.PHOBOSData(<electrode_filename>, n_samples=<number_of_samples_per_acquired_pair>, sweeptype="cell", aggregate=<aggregation_function_for_the_samples>)
+phobos_obj = data_types.PHOBOSData(<electrode_filename>, n_samples=<number_of_samples_per_acquired_pair>, sweeptype="cell", acquisition_mode="freq", aggregate=<aggregation_function_for_the_samples>)
 ```
 
 Electrode files can also be processed individually:
 ```
 from framework import file_lcr
-electrode_obj = file_lcr.read(<electrode_filename>, n_samples=<number_of_samples_per_acquired_pair>, sweeptype="cell", aggregate=<aggregation_function_for_the_samples>)
+electrode_obj = file_lcr.read(<electrode_filename>, n_samples=<number_of_samples_per_acquired_pair>, sweeptype="cell", acquisition_mode="freq", aggregate=<aggregation_function_for_the_samples>)
 ```
 
-## Multi-electrode flange sensor spectroscopy files 
+## Single-electrode cell sensor spectroscopy files 
 
 The infrastructure requirement is to add the CSV files from the acquisition firmware to a directory at the root of the repository. The name of the directory itself can be arbitrary. However, for standardization, it is recommended that the files be named based on the medium analyzed:
 ```
@@ -74,9 +74,9 @@ ice -> ./<data_directory>/<acquisition_directory>/cice.csv
 To read the contents of the file into a SpectroscopyData structure:
 ```
 from framework import file_lcr
-spec_air_obj = file_lcr.read(<air_spectroscopy_filename>, n_samples=<number_of_samples_per_acquired_pair>, sweeptype="spectrum", aggregate=<aggregation_function_for_the_samples>)
-spec_h2o_obj = file_lcr.read(<water_spectroscopy_filename>, n_samples=<number_of_samples_per_acquired_pair>, sweeptype="spectrum", aggregate=<aggregation_function_for_the_samples>)
-spec_ice_obj = file_lcr.read(<ice_spectroscopy_filename>, n_samples=<number_of_samples_per_acquired_pair>, sweeptype="spectrum", aggregate=<aggregation_function_for_the_samples>)
+spec_air_obj = file_lcr.read(<air_spectroscopy_filename>, n_samples=<number_of_samples_per_acquired_pair>, sweeptype="cell", acquisition_mode="spectrum", aggregate=<aggregation_function_for_the_samples>)
+spec_h2o_obj = file_lcr.read(<water_spectroscopy_filename>, n_samples=<number_of_samples_per_acquired_pair>, sweeptype="cell", acquisition_mode="spectrum", aggregate=<aggregation_function_for_the_samples>)
+spec_ice_obj = file_lcr.read(<ice_spectroscopy_filename>, n_samples=<number_of_samples_per_acquired_pair>, sweeptype="cell", acquisition_mode="spectrum", aggregate=<aggregation_function_for_the_samples>)
 ```
 
 From the processed files, it is possible to compute the dielectric parameters of the media and compare them to models from the literature. For example, to compute the parameters for ice:
@@ -97,11 +97,9 @@ ice -> ./<data_directory>/<acquisition_directory>/cice.csv
 To read the contents of the file into a SpectroscopyData structure:
 ```
 from framework import file_admx
-spec_air_obj = file_admx.read(<air_spectroscopy_filename>, sweeptype="spectrum")
-spec_h2o_obj = file_admx.read(<water_spectroscopy_filename>,
-sweeptype="spectrum")
-spec_ice_obj = file_admx.read(<ice_spectroscopy_filename>,
-sweeptype="spectrum")
+spec_air_obj = file_admx.read(<air_spectroscopy_filename>, sweeptype="cell", acquisition_mode="spectrum")
+spec_h2o_obj = file_admx.read(<water_spectroscopy_filename>, sweeptype="cell", acquisition_mode="spectrum")
+spec_ice_obj = file_admx.read(<ice_spectroscopy_filename>, sweeptype="cell", acquisition_mode="spectrum")
 ```
 
 From the processed files, it is possible to compute the dielectric parameters of the media and compare them to models from the literature. For example, to compute the parameters for ice:
