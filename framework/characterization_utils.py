@@ -95,3 +95,29 @@ def dielectric_params_Artemov2013(freqs: np.ndarray, medium='ice'):
     eps_2line_ideal = (omegas*tau_d)*(delta_epsd/(1 + (omegas**2)*(tau_d**2))) #imaginary part of the permittivity
 
     return eps_line_ideal, eps_2line_ideal
+
+def complex_impedance(data_medium:data_types.SpectroscopyData, freqs:np.ndarray):
+    '''
+    :param data_medium: SpectrumData structure for the frequency sweep in the medium to be characterized
+    :param data_air: SpectrumData structure for the frequency sweep in the air
+    :param freqs: array with the swept frequencies
+    :return: the real and complex parts of the impedance
+    '''
+
+    #validate data_medium
+    if type(data_medium) != data_types.SpectroscopyData:
+        raise TypeError(f'[dielectric_params_generic] "data_medium" must be a SpectrumData structure! Curr. type = {type(data_medium)}')
+
+    #validate freqs
+    if type(freqs) != np.ndarray:
+        raise TypeError(f'[dielectric_params_generic] "freqs" must be a Numpy Array! Curr. type = {type(freqs)}')
+
+    omegas = 2*np.pi*freqs #Hz to rad/s
+    if data_medium.Rp.ndim==1:
+        z_line_medium = data_medium.Rp/(1+(omegas*data_medium.Cp*data_medium.Rp)**2) #real part of the impedance
+        z_2line_medium = (omegas*data_medium.Cp*(data_medium.Rp**2))/(1+(omegas*data_medium.Cp*data_medium.Rp)**2) #imaginary part of the impedance
+    elif data_medium.Rp.ndim>1:
+        z_line_medium = data_medium.Rp/(1+(omegas[:,np.newaxis]*data_medium.Cp*data_medium.Rp)**2) #real part of the impedance
+        z_2line_medium = (omegas*data_medium.Cp*(data_medium.Rp**2))/(1+(omegas[:,np.newaxis]*data_medium.Cp*data_medium.Rp)**2) #imaginary part of the permittivity
+
+    return z_line_medium, z_2line_medium
