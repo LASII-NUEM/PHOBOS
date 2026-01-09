@@ -19,13 +19,13 @@ f_ep = spec_h2o_obj.freqs[np.argmax(tan_delta)] #EP relaxation frequency
 f_min_zimag = spec_h2o_obj.freqs[np.argmin(exp_z_imag)] #frequency that separates the bulk and surface effects
 
 fig, ax1 = plt.subplots()
-ax1.plot(np.log10(spec_h2o_obj.freqs), exp_eps_real, color="tab:blue")
-ax1.set_ylabel("ε'.", color="tab:blue")
+ax1.plot(np.log10(spec_h2o_obj.freqs), exp_eps_real/1e5, color="tab:blue")
+ax1.set_ylabel("ε' x 10⁵", color="tab:blue")
 ax1.set_xlabel("log(frequency)")
 ax1.tick_params(axis='y', labelcolor="tab:blue")
 ax2 = ax1.twinx()
-ax2.plot(np.log10(spec_h2o_obj.freqs), exp_eps_imag, color="tab:orange")
-ax2.set_ylabel("ε''", color="tab:orange")
+ax2.plot(np.log10(spec_h2o_obj.freqs), exp_eps_imag/1e5, color="tab:orange")
+ax2.set_ylabel("ε'' x 10⁵", color="tab:orange")
 ax2.tick_params(axis='y', labelcolor="tab:orange")
 ax1.grid()
 fig.tight_layout()

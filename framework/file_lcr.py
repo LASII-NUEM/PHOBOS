@@ -56,10 +56,14 @@ def read(filename:str, n_samples:int, sweeptype="flange", acquisition_mode="freq
     elif sweeptype == "cell":
         if acquisition_mode == 'freq':
             swept_freqs = [float(freq.replace(" ", "").replace("Z", "")) for freq in header_data if 'Z' in freq]
+            if len(swept_freqs) == 0:
+                swept_freqs = [float(freq.replace(" ", "").replace("Cp", "")) for freq in header_data if 'Cp' in freq]
             swept_freqs = np.array(swept_freqs) #convert to numpy array
             data = data_types.CommercialCellData(raw_data, swept_freqs, n_samples, aggregate=aggregate)
         elif acquisition_mode == 'spectrum':
             swept_freqs = [float(freq.replace(" ", "").replace("Z", "")) for freq in header_data if 'Z' in freq]
+            if len(swept_freqs) == 0:
+                swept_freqs = [float(freq.replace(" ", "").replace("Cp", "")) for freq in header_data if 'Cp' in freq]
             swept_freqs = np.array(swept_freqs) #convert to numpy array
             data = data_types.SpectroscopyData(raw_data, swept_freqs, n_samples, sweeptype=sweeptype, aggregate=aggregate)
 
