@@ -142,7 +142,14 @@ def complex_conductivity(data_medium:data_types.SpectroscopyData, data_air:data_
     if type(freqs) != np.ndarray:
         raise TypeError(f'[dielectric_params_generic] "freqs" must be a Numpy Array! Curr. type = {type(freqs)}')
 
-    eps0 =
+    omegas = 2*np.pi*freqs #Hz to rad/s
+    eps0 = 8.854e-12 #permittivty at vacuum
     eps_real, eps_imag = eps_func(data_medium, data_air, freqs) #compute the complex permittivity
+    if data_medium.Rp.ndim==1:
+        sigma_line_medium = omegas*eps0*eps_imag #real conductivity
+        sigma_2line_medium = omegas*eps0*eps_real #real conductivity
+    elif data_medium.Rp.ndim>1:
+        sigma_line_medium = omegas[:,np.newaxis]*eps0*eps_imag #real conductivity
+        sigma_2line_medium = omegas[:,np.newaxis]*eps0*eps_real #real conductivity
 
-    return eps_line_medium, eps_2line_medium
+    return sigma_line_medium, sigma_2line_medium
