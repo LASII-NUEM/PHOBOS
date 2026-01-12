@@ -5,11 +5,11 @@ matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 
 #PHOBOS spectroscopy acquisition
-spec_air_obj = file_lcr.read('../data/testICE_09_01_25/c0.csv', n_samples=3, sweeptype="cell", acquisition_mode="spectrum", aggregate=np.mean)
-spec_deionized_obj = file_lcr.read('../data/testICE_09_01_25/deionized.csv', n_samples=3, sweeptype="cell", acquisition_mode="spectrum", aggregate=np.mean)
-spec_distilled_obj = file_lcr.read('../data/testICE_09_01_25/distilled.csv', n_samples=3, sweeptype="cell", acquisition_mode="spectrum", aggregate=np.mean)
-spec_mineral_obj = file_lcr.read('../data/testICE_09_01_25/mineral.csv', n_samples=3, sweeptype="cell", acquisition_mode="spectrum", aggregate=np.mean)
-spec_tap_obj = file_lcr.read('../data/testICE_09_01_25/tap.csv', n_samples=3, sweeptype="cell", acquisition_mode="spectrum", aggregate=np.mean)
+spec_air_obj = file_lcr.read('../data/test_media_12_01/c0.csv', n_samples=3, sweeptype="cell", acquisition_mode="spectrum", aggregate=np.mean)
+spec_deionized_obj = file_lcr.read('../data/test_media_12_01/deionized.csv', n_samples=3, sweeptype="cell", acquisition_mode="spectrum", aggregate=np.mean)
+spec_distilled_obj = file_lcr.read('../data/test_media_12_01/distilled.csv', n_samples=3, sweeptype="cell", acquisition_mode="spectrum", aggregate=np.mean)
+spec_mineral_obj = file_lcr.read('../data/test_media_12_01/mineral.csv', n_samples=3, sweeptype="cell", acquisition_mode="spectrum", aggregate=np.mean)
+spec_tap_obj = file_lcr.read('../data/test_media_12_01/tap.csv', n_samples=3, sweeptype="cell", acquisition_mode="spectrum", aggregate=np.mean)
 
 #mineral
 #dielectric parameters
@@ -33,6 +33,30 @@ tap_sigma_real, tap_sigma_imag = characterization_utils.complex_conductivity(spe
 tap_f_ep = spec_tap_obj.freqs[np.argmax(tap_tan_delta)] #EP relaxation frequency
 tap_f_min_zimag = spec_tap_obj.freqs[np.argmin(tap_z_imag)] #frequency that separates the bulk and surface effects
 
+#distilled
+#dielectric parameters
+distilled_eps_real, distilled_eps_imag = characterization_utils.dielectric_params_corrected(spec_distilled_obj, spec_air_obj, spec_distilled_obj.freqs) #compute the spectrum based on the experimental data
+distilled_z_real, distilled_z_imag = characterization_utils.complex_impedance(spec_distilled_obj, spec_distilled_obj.freqs) #compute the complex impedance based on the experimental data
+distilled_tan_delta = distilled_eps_imag/distilled_eps_real #tan_delta = eps''/eps'
+distilled_sigma_real, distilled_sigma_imag = characterization_utils.complex_conductivity(spec_distilled_obj, spec_air_obj, spec_distilled_obj.freqs, eps_func=characterization_utils.dielectric_params_corrected) #conductivity
+
+#Electrode polarization frequency
+distilled_f_ep = spec_distilled_obj.freqs[np.argmax(distilled_tan_delta)] #EP relaxation frequency
+distilled_f_min_zimag = spec_distilled_obj.freqs[np.argmin(distilled_z_imag)] #frequency that separates the bulk and surface effects
+
+#deionized
+#dielectric parameters
+deionized_eps_real, deionized_eps_imag = characterization_utils.dielectric_params_corrected(spec_deionized_obj, spec_air_obj, spec_deionized_obj.freqs) #compute the spectrum based on the experimental data
+deionized_z_real, deionized_z_imag = characterization_utils.complex_impedance(spec_deionized_obj, spec_deionized_obj.freqs) #compute the complex impedance based on the experimental data
+deionized_tan_delta = deionized_eps_imag/deionized_eps_real #tan_delta = eps''/eps'
+deionized_sigma_real, deionized_sigma_imag = characterization_utils.complex_conductivity(spec_deionized_obj, spec_air_obj, spec_deionized_obj.freqs, eps_func=characterization_utils.dielectric_params_corrected) #conductivity
+
+#Electrode polarization frequency
+deionized_f_ep = spec_deionized_obj.freqs[np.argmax(deionized_tan_delta)] #EP relaxation frequency
+deionized_f_min_zimag = spec_deionized_obj.freqs[np.argmin(deionized_z_imag)] #frequency that separates the bulk and surface effects
+
+
+
 plt.figure()
 leg = []
 plt.subplot(2,1,1)
@@ -40,6 +64,10 @@ plt.plot(np.log10(spec_mineral_obj.freqs), mineral_eps_real/1e5)
 leg.append('mineral')
 plt.plot(np.log10(spec_tap_obj.freqs), tap_eps_real/1e5)
 leg.append('tap')
+plt.plot(np.log10(spec_deionized_obj.freqs), deionized_eps_real/1e5)
+leg.append('deionized')
+plt.plot(np.log10(spec_distilled_obj.freqs), distilled_eps_real/1e5)
+leg.append('distilled')
 plt.ylabel("ε' x 10⁵")
 plt.legend(leg)
 plt.grid()
@@ -50,6 +78,10 @@ plt.plot(np.log10(spec_mineral_obj.freqs), mineral_eps_imag/1e5)
 leg.append('mineral')
 plt.plot(np.log10(spec_tap_obj.freqs), tap_eps_imag/1e5)
 leg.append('tap')
+plt.plot(np.log10(spec_deionized_obj.freqs), deionized_eps_imag/1e5)
+leg.append('deionized')
+plt.plot(np.log10(spec_distilled_obj.freqs), distilled_eps_real/1e5)
+leg.append('distilled')
 plt.xlabel("log(frequency)")
 plt.ylabel("ε'' x 10⁵")
 plt.grid()
@@ -112,6 +144,7 @@ plt.legend(leg)
 plt.tight_layout()
 plt.show()
 
+#  raw plot
 plt.figure()
 plt.subplot(1,2,1)
 leg = []
