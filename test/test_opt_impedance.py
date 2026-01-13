@@ -23,15 +23,15 @@ ice_z_real, ice_z_imag = characterization_utils.complex_impedance(spec_ice_obj, 
 ice_z = ice_z_real - 1j*ice_z_imag
 
 #Simple Rp/Cp circuit
-# R_candidates = [1e-3, 1e-2, 1e-1, 1, 1e1, 1e2, 1e3, 1e4]
-# #R1_candidates = [1e-3, 1e-2, 1e-1, 1, 1e1, 1e2, 1e3, 1e4]
-# C_candidates = [1e-8, 1e-7, 1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1]
-# all_MSE = np.zeros((len(R_candidates), len(C_candidates)))
-# #all_MSE = np.zeros((len(R_candidates), len(R1_candidates), len(C_candidates)))
-# opt_MSE = np.inf #variable to store the optimal MSE value
-# opt_args = [None, None] #list to store the optimal electrical parameters
-# #opt_args = [None, None, None] #list to store the optimal electrical parameters
-# opt_circuit = None #object of the optimal circuit
+R_candidates = [1e-3, 1e-2, 1e-1, 1, 1e1, 1e2, 1e3, 1e4]
+#R1_candidates = [1e-3, 1e-2, 1e-1, 1, 1e1, 1e2, 1e3, 1e4]
+C_candidates = [1e-8, 1e-7, 1e-6, 1e-5, 1e-4, 1e-3, 1e-2, 1e-1]
+all_MSE = np.zeros((len(R_candidates), len(C_candidates)))
+#all_MSE = np.zeros((len(R_candidates), len(R1_candidates), len(C_candidates)))
+opt_MSE = np.inf #variable to store the optimal MSE value
+opt_args = [None, None] #list to store the optimal electrical parameters
+#opt_args = [None, None, None] #list to store the optimal electrical parameters
+opt_circuit = None #object of the optimal circuit
 
 #grid search to optimize the hyperparameters
 # for i in range(len(R_candidates)):
@@ -50,32 +50,32 @@ ice_z = ice_z_real - 1j*ice_z_imag
 #                 opt_args = curr_guess #update the optimal guess
 #                 opt_circuit = circuit #update the optimal circuit
 
-# for i in range(len(R_candidates)):
-#     for j in range(len(C_candidates)):
-#         print(f'candidate: i = {i}, j = {j}')
-#         curr_guess = [R_candidates[i], C_candidates[j]]
-#         circuit = CustomCircuit('p(R_0,C_0)',
-#                         initial_guess=curr_guess)
-#         circuit.fit(spec_ice_obj.freqs, ice_z)
-#         curr_fit = circuit.predict(spec_ice_obj.freqs)
-#         curr_MSE = MSE(ice_z, curr_fit) #compute the MSE
-#         all_MSE[i,j] = np.abs(curr_MSE)
-#         if np.abs(curr_MSE) < opt_MSE:
-#             opt_MSE = curr_MSE #commute the variables
-#             opt_args = curr_guess #update the optimal guess
-#             opt_circuit = circuit #update the optimal circuit
-#
-# #compute the fit for the optimal circuit
-# print(f'Optimal circuit = {opt_circuit}')
-# opt_fit = opt_circuit.predict(spec_ice_obj.freqs)
+for i in range(len(R_candidates)):
+    for j in range(len(C_candidates)):
+        print(f'candidate: i = {i}, j = {j}')
+        curr_guess = [R_candidates[i], C_candidates[j]]
+        circuit = CustomCircuit('p(R_0,C_0)',
+                        initial_guess=curr_guess)
+        circuit.fit(spec_ice_obj.freqs, ice_z)
+        curr_fit = circuit.predict(spec_ice_obj.freqs)
+        curr_MSE = MSE(ice_z, curr_fit) #compute the MSE
+        all_MSE[i,j] = np.abs(curr_MSE)
+        if np.abs(curr_MSE) < opt_MSE:
+            opt_MSE = curr_MSE #commute the variables
+            opt_args = curr_guess #update the optimal guess
+            opt_circuit = circuit #update the optimal circuit
 
-initial_guess = [.1, .005, .1, .9, .005, .1, 200, .1, .9]
-opt_circuit = CustomCircuit('R_0-p(R_1,CPE_1)-p(R_2-Wo_1,CPE_2)',
-                        initial_guess=initial_guess)
-opt_circuit.fit(spec_ice_obj.freqs, ice_z)
+#compute the fit for the optimal circuit
+print(f'Optimal circuit = {opt_circuit}')
 opt_fit = opt_circuit.predict(spec_ice_obj.freqs)
-curr_MSE = MSE(ice_z, opt_fit) #compute the MSE
-print(opt_circuit)
+
+# initial_guess = [.1, .005, .1, .9, .005, .1, 200, .1, .9]
+# opt_circuit = CustomCircuit('R_0-p(R_1,CPE_1)-p(R_2-Wo_1,CPE_2)',
+#                         initial_guess=initial_guess)
+# opt_circuit.fit(spec_ice_obj.freqs, ice_z)
+# opt_fit = opt_circuit.predict(spec_ice_obj.freqs)
+# curr_MSE = MSE(ice_z, opt_fit) #compute the MSE
+# print(opt_circuit)
 
 #plot
 plt.figure()

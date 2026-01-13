@@ -153,3 +153,29 @@ def complex_conductivity(data_medium:data_types.SpectroscopyData, data_air:data_
         sigma_2line_medium = omegas[:,np.newaxis]*eps0*eps_real #real conductivity
 
     return sigma_line_medium, sigma_2line_medium
+
+def dielectric_modulus(data_medium:data_types.SpectroscopyData, data_air:data_types.SpectroscopyData, freqs:np.ndarray, eps_func: dielectric_params_generic):
+    '''
+    :param data_medium: SpectrumData structure for the frequency sweep in the medium to be characterized
+    :param data_air: SpectrumData structure for the frequency sweep in the air
+    :param freqs: array with the swept frequencies
+    :return: the real and complex parts of the dielectric modulus
+    '''
+
+    #validate data_medium
+    if type(data_medium) != data_types.SpectroscopyData:
+        raise TypeError(f'[dielectric_params_generic] "data_medium" must be a SpectrumData structure! Curr. type = {type(data_medium)}')
+
+    #validate data_air
+    if type(data_air) != data_types.SpectroscopyData:
+        raise TypeError(f'[dielectric_params_generic] "data_air" must be a SpectrumData structure! Curr. type = {type(data_air)}')
+
+    #validate freqs
+    if type(freqs) != np.ndarray:
+        raise TypeError(f'[dielectric_params_generic] "freqs" must be a Numpy Array! Curr. type = {type(freqs)}')
+
+    eps_real, eps_imag = eps_func(data_medium, data_air, freqs) #compute the complex permittivity
+    eps = (eps_real + 1j*eps_imag).astype('complex')
+    M = 1/eps #M = 1/ε
+
+    return M.real, M.imag

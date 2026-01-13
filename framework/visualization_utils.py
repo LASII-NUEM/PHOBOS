@@ -477,3 +477,78 @@ def cole_cole_conductivity(data_medium: list[data_types.SpectroscopyData], data_
     plt.show()
 
     return computed_sigma
+
+def cole_cole_modulus(data_medium: list[data_types.SpectroscopyData], data_air:data_types.SpectroscopyData, freqs: np.ndarray, eps_func=characterization_utils.dielectric_params_generic, labels=None, title=None):
+    '''
+    :param data_medium: SpectrumData structure for the frequency sweep in the medium to be characterized
+    :param data_air: SpectrumData structure for the frequency sweep in the air
+    :param freqs: array with the swept frequencies
+    :param eps_func: function used to compute the permittivity
+    :param labels: list with the labels of the measured media
+    :param title: title of the figure
+    :return the computed dielectric modulus (real and imaginary) in a dictionary structure
+    '''
+
+    #validate data_medium
+    if not isinstance(data_medium, list):
+        if isinstance(data_medium, data_types.SpectroscopyData):
+            data_medium = [data_medium] #generate a list
+        else:
+            raise TypeError(f'[cole_cole_modulus] "data_medium" must be a SpectrumData structure! Curr. type = {type(data_medium)}')
+    else:
+        for medium_elem in data_medium:
+            if not isinstance(medium_elem, data_types.SpectroscopyData):
+                raise TypeError(f'[cole_cole_modulus] "data_medium" must be a SpectrumData structure! Curr. type = {type(data_medium)}')
+
+    #validate data_air
+    if type(data_air) != data_types.SpectroscopyData:
+        raise TypeError(f'[cole_cole_modulus] "data_air" must be a SpectrumData structure! Curr. type = {type(data_air)}')
+
+    #validate freqs:
+    if len(freqs) != len(data_medium[0].freqs):
+        raise ValueError(f'[cole_cole_modulus] "freqs" and the swept frequencies from "data_medium" do not match!')
+
+    #validate labels:
+    if labels is not None:
+        generate_labels = True #flag to monitor if a legend will be added or not
+        if isinstance(labels, list):
+            if len(labels) != len(data_medium):
+                raise ValueError(f'[cole_cole_modulus] The length of "labels" and "data_medium" do not match!')
+        else:
+            labels = [f'{labels}']
+    else:
+        generate_labels = False #flag to monitor if a legend will be added or not
+
+    #compute all conductivity prior to plotting
+    computed_M = {} #dictionary to append all computed permittivity
+    for i in range(len(data_medium)):
+        curr_data_medium = data_medium[i] #extract the SpectroscopyObject
+        curr_M_real, curr_M_imag = characterization_utils.dielectric_modulus(curr_data_medium, data_air, curr_data_medium.freqs, eps_func=eps_func) #compute the conductivity given "eps_func"
+        computed_M[f'data_{i}'] = {
+            "real": curr_M_real,
+            "imag": curr_M_imag
+        } #append the computed data
+
+    #cole-cole conductivity plot M' x M''
+    plt.figure()
+
+    if generate_labels:
+        leg = [] #list to append all real labels
+    else:
+        leg = None
+
+    for j in range(len(list(computed_M.keys()))):
+        plt.plot(computed_M[f'data_{j}']["real"], computed_M[f'data_{j}']["imag"])
+        if generate_labels:
+            leg.append(labels[j])
+    plt.xlabel(f"M'")
+    plt.ylabel(f"M''")
+    if generate_labels:
+        plt.legend(leg)
+    plt.grid()
+    if title is not None:
+        plt.title(f'{title}')
+    plt.tight_layout()
+    plt.show()
+
+    return computed_M
