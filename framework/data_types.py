@@ -187,7 +187,7 @@ class SpectroscopyData:
 
         #validade hardware input
         hardware = hardware.lower() #convert to lowercase
-        valid_hardware = ['lcr', 'admx'] #list of valid sweep types
+        valid_hardware = ['lcr', 'admx', 'ia'] #list of valid sweep types
         if hardware not in valid_hardware:
             raise ValueError(f'[SpectroscopyData] hardware = {hardware} not implemented! Try: {valid_hardware}')
 
@@ -232,6 +232,9 @@ class SpectroscopyData:
                 if aggregate is not None:
                     self.agg_Cp = aggregate(self.Cp, axis=0) #mean over the n_samples
                     self.agg_Rp = aggregate(self.Rp, axis=0) #mean over the n_samples
+        elif hardware == 'ia':
+            self.Cp = electrode_data[0,:].astype('float')  # update capacitance readings
+            self.Rp = electrode_data[1,:].astype('float')  # update resistance readings
 
         elif hardware == 'admx':
             if sweeptype == 'cell':
@@ -345,3 +348,4 @@ class PHOBOSData:
                 #aggregate the normalized signals over the modes
                 self.agg_Cp_norm[:,f] = aggregate(self.Cp_norm[:,:,f], axis=1)
                 self.agg_Rp_norm[:, f] = aggregate(self.Rp_norm[:, :, f], axis=1)
+

@@ -104,6 +104,33 @@ exp_eps_real, exp_eps_imag = characterization_utils.dielectric_params_corrected(
 ideal_eps_real, ideal_eps_imag = characterization_utils.dielectric_params_Artemov2013(spec_ice_obj.freqs, medium="ice") #ideal curves
 ```
 
+## Impedance Analyzer 4294A spectroscopy files
+The infrastructure requirement is to add the Xls file from the acquisition firmware to a directory at the root of the repository. The name of the directory itself can be arbitrary. However, for standardization, it is recommended.
+```
+TestData -> ./<data_directory>/<acquisition_directory>/4294A_DataTransfer_0310.xls
+```
+To read the contents of the file into a SpectroscopyData structure:
+```
+from framework import file_ia
+spec_ia_obj = file_ia.read(<air_spectroscopy_filename>)
+```
+As the 4294A IA file is generated via VBA, each measurement is stored in its own worksheet inside the .xls. After loading the file, spec_ia_obj behaves like a dictionary: the keys are the sheet names, and each value is the corresponding SpectroscopyData object. To access the sheet list and a specific test/sheet:
+```
+# list available sheets (tests)
+sheets = list(spec_ia_obj.keys())
+print(sheets)
+
+# access a specific test by sheet name
+# Air (C0)
+spec_ia_air= spec_ia_obj["C0"]
+```
+From the processed files, it is possible to compute the dielectric parameters of the media and compare them to models from the literature. For example, to compute the parameters for ice:
+```
+from framework import characterization_utils
+exp_eps_real, exp_eps_imag = characterization_utils.dielectric_params_corrected(spec_ia_obj["Sheet"], spec_ia_air, spec_ia_obj["Sheet"].freqs) #experimental data
+ideal_eps_real, ideal_eps_imag = characterization_utils.dielectric_params_Artemov2013(spec_ia_obj["Sheet"].freqs, medium="ice") #ideal curves
+```
+
 ## ADMX2001 spectroscopy files
 The infrastructure requirement is to add the CSV files from the acquisition firmware to a directory at the root of the repository. The name of the directory itself can be arbitrary. However, for standardization, it is recommended that the files be named based on the medium analyzed:
 ```

@@ -1,63 +1,45 @@
 import pandas as pd
-import csv
 import numpy as np
 import os
 from framework import data_types
 
-def read(filename:str, n_samples:int, sweeptype="flange", acquisition_mode="freq", aggregate=None, timezone=-3):
+def read(filename:str):
     '''
-    :param filename: path where the .csv is stored
-    :param n_samples: samples per pair swept
-    :param sweeptype: which hardware was used to acquire the signals
-    :param acquisition_mode: how the data is expected to be organized ('flange' for 10-mode sweep or 'spectrum' for full spectroscopy)
-    :param aggregate: how to organize the data for each mode (None as default)
-    :param timezone: timezone to convert unix timestamp to human timestamp
+    :param filename: path where the .xls is stored
     '''
 
     #check if the filename exists
     if not os.path.isfile(filename):
         raise FileNotFoundError(f'[file_lcr] Filename {filename} does not exist!')
 
-    #validate n_samples
-    if not (n_samples>0):
-        raise ValueError(f'[file_lcr] n_samples = {n_samples}, must be > 0!')
+    xls = pd.ExcelFile(filename)
+    sheet_names = xls.sheet_names
 
-    #validate sweeptype
-    sweeptype = sweeptype.lower() #convert to lowercase
-    valid_sweeps = ['cell', 'custom'] #list of valid sweep types
-    if sweeptype not in valid_sweeps:
-        raise ValueError(f'[file_lcr] sweeptype = {sweeptype} not implemented! Try: {valid_sweeps}')
+    row_start = 9
+    row_end = 210
 
-    #validate acquisition_mode
-    acquisition_mode = acquisition_mode.lower()  # convert to lowercase
-    valid_acqs = ['spectrum']  # list of valid sweep types
-    if acquisition_mode not in valid_acqs:
-        raise ValueError(f'[file_lcr] acquisition_mode = {acquisition_mode} not implemented! Try: {valid_acqs}')
+    n_freq = row_end - row_start
 
-    #infer the swept frequencies from the file header
-    with open(filename, 'r') as f:
-        reader = csv.DictReader(f) #read only the header
-        header_data = reader.fieldnames
-    f.close() #close the file
+    raw_data = np.zeros((2, n_freq), dtype=float)
 
-    #process the raw data output from the PHOBOS acquisition system into a custom data structure
-    raw_data = pd.read_csv(filename).to_numpy() #process the raw data output from the PHOBOS acquisition system
+    data = {}
+    for i in range(2, len(sheet_names)):
+        df = pd.read_excel(xls, sheet_name=sheet_names[i], usecols=[2, 3, 5], skiprows=row_start,
+                           nrows=row_end - row_start, dtype="float64")
 
-    if sweeptype == "cell":
-        if acquisition_mode == 'freq':
-            swept_freqs = [float(freq.replace(" ", "").replace("Z", "")) for freq in header_data if 'Z' in freq]
-            if len(swept_freqs) == 0:
-                swept_freqs = [float(freq.replace(" ", "").replace("Cp", "")) for freq in header_data if 'Cp' in freq]
-            swept_freqs = np.array(swept_freqs) #convert to numpy array
-            data = data_types.CommercialCellData(raw_data, swept_freqs, n_samples, aggregate=aggregate)
-        elif acquisition_mode == 'spectrum':
-            swept_freqs = [float(freq.replace(" ", "").replace("Z", "")) for freq in header_data if 'Z' in freq]
-            if len(swept_freqs) == 0:
-                swept_freqs = [float(freq.replace(" ", "").replace("Cp", "")) for freq in header_data if 'Cp' in freq]
-            swept_freqs = np.array(swept_freqs) #convert to numpy array
-            data = data_types.SpectroscopyData(raw_data, swept_freqs, n_samples, sweeptype=sweeptype, aggregate=aggregate)
+        swept_freqs = pd.to_numeric(df.iloc[:, 0], errors='coerce') * 1e-14
+        df.iloc[:, 1] = pd.to_numeric(df.iloc[:, 1], errors='coerce') * 1e-6
+        df.iloc[:, 2] = pd.to_numeric(df.iloc[:, 2], errors='coerce') * 1e-6
 
-    elif sweeptype == "custom":
-        data = None #TODO: generate custom-based files
+        df.rename(columns={df.columns[1]: 'CP', df.columns[2]: 'RP'}, inplace=True)
+
+        Cp = df["CP"].to_numpy()
+        Rp = df["RP"].to_numpy()
+
+        raw_data[0, :] = Cp
+        raw_data[1, :] = Rp
+
+        swept_freqs = np.array(swept_freqs) #convert to numpy array
+        data[sheet_names[i]] = data_types.SpectroscopyData(raw_data, swept_freqs, hardware="ia")
 
     return data
