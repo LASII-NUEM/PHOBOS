@@ -40,6 +40,6 @@ def read(filename:str):
         raw_data[1, :] = Rp
 
         swept_freqs = np.array(swept_freqs) #convert to numpy array
-        data[sheet_names[i]] = data_types.SpectroscopyData(raw_data, swept_freqs, hardware="ia")
+        data[sheet_names[i].lower()] = data_types.SpectroscopyData(raw_data, swept_freqs, hardware="ia")
 
     return data

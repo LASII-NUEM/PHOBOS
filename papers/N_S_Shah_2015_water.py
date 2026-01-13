@@ -18,17 +18,17 @@ import numpy as np
 #IA spectroscopy acquisition
 spec_obj = file_ia.read('../data/testICE_13_01_26/4294A_DataTransfer_0310.xls')
 
-target_medium = "tap"
-exp_eps_real, exp_eps_imag = characterization_utils.dielectric_params_corrected(spec_obj[target_medium], spec_obj["C0"], spec_obj[target_medium].freqs) #compute the spectrum based on the experimental data
+target_medium = "mineral"
+exp_eps_real, exp_eps_imag = characterization_utils.dielectric_params_corrected(spec_obj[target_medium], spec_obj["c0"], spec_obj[target_medium].freqs) #compute the spectrum based on the experimental data
 exp_z_real, exp_z_imag = characterization_utils.complex_impedance(spec_obj[target_medium], spec_obj[target_medium].freqs) #compute the complex impedance based on the experimental data
 tan_delta = exp_eps_imag/exp_eps_real #tan_delta = eps''/eps'
-exp_sigma_real, exp_sigma_imag = characterization_utils.complex_conductivity(spec_obj[target_medium], spec_obj["C0"], spec_obj[target_medium].freqs, eps_func=characterization_utils.dielectric_params_corrected) #conductivity
+exp_sigma_real, exp_sigma_imag = characterization_utils.complex_conductivity(spec_obj[target_medium], spec_obj["c0"], spec_obj[target_medium].freqs, eps_func=characterization_utils.dielectric_params_corrected) #conductivity
 
 
 #Electrode polarization frequency
 f_ep = spec_obj[target_medium].freqs[np.argmax(tan_delta)] #EP relaxation frequency
 f_min_zimag = spec_obj[target_medium].freqs[np.argmin(exp_z_imag)] #frequency that separates the bulk and surface effects
-spec_air_obj = spec_obj["C0"]
+spec_air_obj = spec_obj["c0"]
 spec_obj = spec_obj[target_medium]
 
 #plots
