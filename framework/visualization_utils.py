@@ -4,12 +4,14 @@ import matplotlib
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 
-def permittivity_by_freq_logx(data_medium: list[data_types.SpectroscopyData], data_air:data_types.SpectroscopyData, freqs: np.ndarray, eps_func=characterization_utils.dielectric_params_generic, labels=None, title=None, yaxis_scale=1e5):
+def permittivity_by_freq_logx(data_medium: list[data_types.SpectroscopyData], data_air:data_types.SpectroscopyData, freqs: np.ndarray, eps_func=characterization_utils.dielectric_params_generic, medium = "water", artemov = False,  labels=None, title=None, yaxis_scale=1e5):
     '''
     :param data_medium: SpectrumData structure for the frequency sweep in the medium to be characterized
     :param data_air: SpectrumData structure for the frequency sweep in the air
     :param freqs: array with the swept frequencies
     :param eps_func: function used to compute the permittivity
+    :param medium: the medium to be characterized
+    :param artemov : bool used to define artemov reference plot will or not be applied
     :param labels: list with the labels of the measured media
     :param title: title of the figure
     :param yaxis_scale: y-axis plot scale
@@ -50,6 +52,15 @@ def permittivity_by_freq_logx(data_medium: list[data_types.SpectroscopyData], da
     if yaxis_scale < 1:
         raise ValueError(f'[permittivity_by_freq] "yaxis_scale" must be greater than 0')
 
+        # validate medium
+    medium = medium.lower()  # convert to lowercase
+    valid_media = ["water", "ice"]
+    if medium not in valid_media:
+        raise ValueError(f'[dielectric_params_Artemov2013] "medium" = {medium} not implemented! Try: {valid_media}')
+        
+    #compute Artemov's reference permittivity
+    eps_line_ideal, eps_2line_ideal = characterization_utils.dielectric_params_Artemov2013(freqs, medium)
+
     #compute all permittivity prior to plotting
     computed_eps = {} #dictionary to append all computed permittivity
     for i in range(len(data_medium)):
@@ -72,10 +83,15 @@ def permittivity_by_freq_logx(data_medium: list[data_types.SpectroscopyData], da
 
     #real permittivity plot
     plt.subplot(2, 1, 1)
+
     for j in range(len(list(computed_eps.keys()))):
         plt.plot(np.log10(freqs), computed_eps[f'data_{j}']["real"]/yaxis_scale)
         if generate_labels:
             leg_real.append(labels[j])
+
+    if artemov == True:
+        plt.plot(np.log10(freqs), eps_line_ideal / yaxis_scale, color="black")
+        leg_imag.append("Artemov")
     plt.ylabel(f"ε' x {yaxis_scale}")
     if generate_labels:
         plt.legend(leg_real)
@@ -87,6 +103,9 @@ def permittivity_by_freq_logx(data_medium: list[data_types.SpectroscopyData], da
         plt.plot(np.log10(freqs), computed_eps[f'data_{j}']["imag"]/yaxis_scale)
         if generate_labels:
             leg_imag.append(labels[j])
+    if artemov == True:
+        plt.plot(np.log10(freqs), eps_2line_ideal / yaxis_scale, color="black")
+        leg_imag.append("Artemov")
     plt.ylabel(f"ε'' x {yaxis_scale}")
     if generate_labels:
         plt.legend(leg_imag)
