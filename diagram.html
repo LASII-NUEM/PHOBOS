@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Phobos – System Architecture</title>
+
+<style>
+    body {
+        font-family: Arial, Helvetica, sans-serif;
+        background-color: #ffffff;
+    }
+
+    .tree {
+        display: flex;
+        justify-content: center;
+        margin-top: 40px;
+    }
+
+    .tree ul {
+        padding-top: 20px;
+        position: relative;
+        display: flex;
+        justify-content: center;
+    }
+
+    .tree li {
+        list-style-type: none;
+        text-align: center;
+        position: relative;
+        padding: 20px 10px 0 10px;
+    }
+
+    /* Lines */
+    .tree li::before,
+    .tree li::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 50%;
+        border-top: 2px solid #ccc;
+        width: 50%;
+        height: 20px;
+    }
+
+    .tree li::after {
+        right: auto;
+        left: 50%;
+        border-left: 2px solid #ccc;
+    }
+
+    .tree li:only-child::after,
+    .tree li:only-child::before {
+        display: none;
+    }
+
+    .tree li:only-child {
+        padding-top: 0;
+    }
+
+    .tree li:first-child::before,
+    .tree li:last-child::after {
+        border: 0 none;
+    }
+
+    .tree li:last-child::before {
+        border-right: 2px solid #ccc;
+        border-radius: 0 5px 0 0;
+    }
+
+    .tree li:first-child::after {
+        border-radius: 5px 0 0 0;
+    }
+
+    ul ul::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 50%;
+        border-left: 2px solid #ccc;
+        width: 0;
+        height: 20px;
+    }
+
+    /* Boxes */
+    .box {
+        display: inline-block;
+        padding: 10px 18px;
+        border-radius: 6px;
+        background: #b0b0b0;
+        color: white;
+        font-size: 14px;
+        min-width: 120px;
+    }
+
+    .box.blue {
+        background: #1f77ff;
+        font-weight: bold;
+    }
+
+    .box.green {
+        background: #2ecc71;
+    }
+
+    .box.yellow {
+        background: #f1c40f;
+	font-size: 13px;
+        min-width: 90px;
+    }
+
+    .box.red {
+        background: #e74c3c;
+	font-size: 13px;
+        min-width: 90px;
+    }
+
+</style>
+</head>
+
+<body>
+
+<div class="tree">
+<ul>
+    <li>
+        <div class="box blue">Phobos</div>
+        <ul>
+            <li>
+                <div class="box green">Read</div>
+                <ul>
+                    <li>
+                        <div class="box yellow">Equipment</div>
+                        <ul>
+                            <li><div class="box red">LCR</div></li>
+                            <li><div class="box red">IA</div></li>
+                            <li><div class="box red">ADMX</div></li>
+                        </ul>
+                    </li>
+                    <li>
+                        <div class="box yellow">Electrode</div>
+                        <ul>
+                            <li><div class="box red">Custom</div></li>
+                            <li><div class="box red">Commercial</div></li>
+                            <li><div class="box red">Flange</div></li>
+                        </ul>
+                    </li>
+                    <li>
+                        <div class="box yellow">Measurement</div>
+                        <ul>
+                            <li><div class="box red">Spectrum</div></li>
+                            <li><div class="box red">Frequencies</div></li>
+                        </ul>
+                    </li>
+                    <li><div class="box yellow">Samples</div></li>
+                    <li><div class="box yellow">Temp / Pressure</div></li>
+                </ul>
+            </li>
+
+            <li>
+                <div class="box green">Processing</div>
+                <ul>
+                    <li><div class="box yellow">Conductivity</div></li>
+                    <li><div class="box yellow">Permittivity</div></li>
+                    <li><div class="box yellow">Impedance Fit</div></li>
+                </ul>
+            </li>
+
+            <li>
+                <div class="box green">Visualization</div>
+            </li>
+
+            <li>
+                <div class="box green">Growth Rate cam</div>
+                <ul>
+                    <li><div class="box yellow">Dataset</div></li>
+                    <li><div class="box yellow">AI Model</div></li>
+                </ul>
+            </li>
+        </ul>
+    </li>
+</ul>
+</div>
+
+</body>
+</html>
