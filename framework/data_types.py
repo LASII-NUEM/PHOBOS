@@ -282,6 +282,44 @@ class TemperatureData:
         self.human_timestamp = self.human_timestamp.astype('datetime64') #convert from datetime object to numpy datetime
         self.n_sensors = np.shape(self.measured_temp)[1] #number of available thermocouples
 
+class TempPressData:
+    def __init__(self, TempPressure_data:np.ndarray, abs_timestamp:datetime.datetime, ):
+        '''
+        :param TempPressure_data: raw Pressure and Temperature data output from the LVM file
+        :param abs_timestamp: absolute timestamp of the first acquired sample
+        '''
+
+        #check if the thermocouple data input is a numpy array
+        if type(TempPressure_data) != np.ndarray:
+            raise TypeError(f'[TempPressData] Raw thermocouple and pressure data must be a numpy array! Curr. type = {type(TempPressure_data)}')
+
+        #check if the absolute timestamp input is a datetime object
+        if type(abs_timestamp) != datetime.datetime:
+            raise TypeError(f'[TempPressData] Absolute timestamp must be a datetime object! Curr. type = {type(abs_timestamp)}')
+
+        n_samples = len(TempPressure_data) #number of acquired samples per thermocouple
+        self.relative_timestamp = np.zeros((n_samples,)) #array that stores the relative timestamps from the raw file
+        self.human_timestamp = np.zeros((n_samples,), dtype=datetime.datetime)
+        self.measured_temp = np.zeros(n_samples) #array that stores the measured temperatures for each thermocouple
+        self.measured_pressure = np.zeros(n_samples)
+        for i in range(0, n_samples):
+            raw_line = TempPressure_data[i] #process each sample line at a time
+            raw_line = raw_line.replace(',', '.') #use '.' as decimal notation
+            raw_line = raw_line.strip('\n') #remove any line breakers
+            raw_line = raw_line.split('\t') #split on tabs
+
+            #if a line has less than 5 elements, skip
+            if len(raw_line) < 5:
+                continue
+
+            self.relative_timestamp[i] = float(raw_line[0]) #update timestamps
+            relative_delta = datetime.timedelta(seconds=self.relative_timestamp[i]-self.relative_timestamp[0]) #time delta for the current sample
+            self.human_timestamp[i] = abs_timestamp + relative_delta #human timestamp from the absolute
+            self.measured_temp[i] = float(raw_line[1]) #update temperature readings
+            self.measured_pressure[i] = float(raw_line[2]) #update pressure readings
+
+        self.human_timestamp = self.human_timestamp.astype('datetime64') #convert from datetime object to numpy datetime
+
 class PHOBOSData:
     def __init__(self, filename_electrode:str, filename_temperature=None, n_samples=1, normalize=True, sweeptype="flange", acquisition_mode="freq", aggregate=None, timezone=-3):
         '''
