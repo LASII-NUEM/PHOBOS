@@ -41,7 +41,7 @@ def Bannwart2006(theta, args):
 
 #PHOBOS spectroscopy acquisition
 spec_air_obj = file_lcr.read('../data/testICE_12_12_25/c0.csv', n_samples=3, sweeptype="cell", acquisition_mode="spectrum", aggregate=np.mean)
-spec_ice_obj = file_lcr.read('../data/testICE_12_12_25/c_ice.csv', n_samples=3, sweeptype="cell", acquisition_mode="spectrum", aggregate=np.mean)
+spec_ice_obj = file_lcr.read('../data/testICE_12_12_25/cice.csv', n_samples=3, sweeptype="cell", acquisition_mode="spectrum", aggregate=np.mean)
 spec_h2o_obj = file_lcr.read('../data/testICE_12_12_25/c1.csv', n_samples=3, sweeptype="cell", acquisition_mode="spectrum", aggregate=np.mean)
 
 #dielectric parameters
@@ -64,33 +64,6 @@ bounds = [(0,np.inf), (0,np.inf), (0,np.inf), (0,np.inf), (0,np.inf), (0,np.inf)
 opt_MSE = np.inf #variable to store the optimal MSE value
 opt_fit = None #object of the optimal circuit
 opt_obj = None #object of the optimal minimizer
-
-#optimize the hyperparameters
-# for i in range(len(R1_candidates)):
-#     t_init = time.time()
-#     print(f'[test_opt_impedance.py] R1 = {R1_candidates[i]}')
-#     for j in range(len(tau1_candidates)):
-#         for k in range(len(R2_candidates)):
-#             for l in range(len(tau2_candidates)):
-#                 for m in range(len(R3_candidates)):
-#                     for n in range(len(tau3_candidates)):
-#                         for o in range(len(n3_candidates)):
-#                             for p in range(len(tau4_candidates)):
-#                                 curr_guess = [R1_candidates[i], tau1_candidates[j], R2_candidates[k], tau2_candidates[l],
-#                                               R3_candidates[m], tau3_candidates[n], n3_candidates[o], tau4_candidates[p]]
-#                                 try:
-#                                     curr_obj = minimize(model_MSE, curr_guess, args=([ice_z, spec_ice_obj.freqs],),
-#                                                        bounds=bounds, method='L-BFGS-B')
-#
-#                                     if curr_obj.fun < opt_MSE:
-#                                         opt_MSE = curr_obj.fun
-#                                         opt_obj = curr_obj
-#                                         opt_fit = Bannwart2006(opt_obj.x, spec_ice_obj.freqs)
-#
-#                                 except Exception as e:
-#                                     print(f'[test_opt_impedance.py] Skipped {curr_guess}: {e}')
-#
-#     print(f'[test_opt_impedance.py] Elapsed time for all combination of R1 = {time.time() - t_init} s')
 
 #non-linear curve fitting
 #opt_obj = least_squares(MSE, [2.3e3, 2.7e-7, 9.82e6, 2.81e-2, 36.26e2, 1.16e-1, 0.61, 1.55], args=([ice_z, spec_ice_obj.freqs],))
