@@ -56,15 +56,19 @@ function_handlers = {
 }
 
 class OptimizerResults:
-    def __init__(self, opt_params=None, opt_params_scaled=None, opt_cost=None, opt_fit=None, n_iter=None, t_elapsed=None):
+    def __init__(self, opt_params=None, opt_params_scaled=None, opt_cost=None, opt_fit=None, r2_score_real=None, r2_score_imag=None, n_iter=None, t_elapsed=None):
         if opt_params is not None:
             self.opt_params = opt_params
         if opt_params_scaled is not None:
-            self.opt_mult = opt_params_scaled
+            self.opt_params_scaled = opt_params_scaled
         if opt_cost is not None:
             self.opt_fun = opt_cost
         if opt_fit is not None:
             self.opt_fit = opt_fit
+        if r2_score_real is not None:
+            self.r2_score_real = r2_score_real
+        if r2_score_imag is not None:
+            self.r2_score_imag = r2_score_imag
         if n_iter is not None:
             self.n_iter = n_iter
         if t_elapsed is not None:
@@ -111,8 +115,10 @@ class EquivalentCircuit:
         '''
 
         z_hat = self.circuit_impedance(theta, [args[1], args[2]]) #compute the model for the arguments
-        #SSE = np.sum(np.abs(args[0].real-z_hat.real)*np.abs(args[0].imag-z_hat.imag)) #sum of squared errors
-        SSE = np.sum((np.abs(args[0]) - np.abs(z_hat))**2) #sum of squared errors
+        z_hat = z_hat.astype('complex')
+        args[0] = args[0].astype('complex')
+        SSE = np.sum(np.abs((args[0].real-z_hat.real)*(args[0].imag-z_hat.imag)))
+        #SSE = np.sum((np.abs(args[0]) - np.abs(z_hat))**2) #sum of squared errors
         return SSE / len(z_hat)
 
     def fit_circuit(self, initial_guess:np.ndarray, scaling_array:np.ndarray, method='BFGS'):
@@ -150,8 +156,83 @@ class EquivalentCircuit:
             t_init = time.time()
             fit_obj = minimize(self.complex_MSE, initial_guess, args=([self.z_meas, omega, scaling_array],), bounds=bounds, method='L-BFGS-B')
             t_elapsed = time.time() - t_init
+            opt_fit = self.circuit_impedance(fit_obj.x, [omega, scaling_array]) #compute the circuit for the optimal values
+            r2_real, r2_imag = self.complex_r2_score(self.z_meas_real, opt_fit.real, self.z_meas_imag, -opt_fit.imag) #r2 score for both complex parts
             return OptimizerResults(opt_params=fit_obj.x, opt_params_scaled=fit_obj.x*scaling_array, opt_cost=fit_obj.fun,
-                                    opt_fit=self.circuit_impedance(fit_obj.x, [omega, scaling_array]),
-                                    n_iter=fit_obj.nit, t_elapsed=t_elapsed) #return the optimized parameters
+                                    opt_fit=opt_fit, r2_score_real=r2_real, r2_score_imag=r2_imag, n_iter=fit_obj.nit, t_elapsed=t_elapsed) #return the optimized parameters
         else:
             print('...')
+
+    def r2_score(self, z:np.ndarray, z_hat:np.ndarray):
+        '''
+        :param z: the observed values (real measurements)
+        :param z_hat: the predicted values from the fitted circuit
+        :return: R2 score of the fit (coefficient of determination)
+        '''
+
+        #validate 'z'
+        if not isinstance(z, np.ndarray):
+            raise TypeError(f'[EquivalentCircuit] "z" must be a Numpy Array! Curr. type = {type(z)}')
+
+        #validate 'z_hat'
+        if not isinstance(z_hat, np.ndarray):
+            raise TypeError(f'[EquivalentCircuit] "z_hat" must be a Numpy Array! Curr. type = {type(z_hat)}')
+
+        #validate shape
+        if len(z) != len(z_hat):
+            raise ValueError(f'[EquivalentCircuit] "z" and "z_hat" must match in length!')
+
+        #coefficient of determination
+        z_mean = np.mean(z) #mean of the observed values
+        SSE = np.sum((z-z_hat)**2) #sum of the squared errors
+        SSTot = np.sum((z-z_mean)**2) #sum of squares
+
+        return 1 - (SSE/SSTot)
+
+    def complex_r2_score(self, z_real: np.ndarray, z_hat_real: np.ndarray, z_imag: np.ndarray, z_hat_imag: np.ndarray):
+        '''
+        :param z_real: real part of the observed values (real measurements)
+        :param z_hat_real: real part of the predicted values from the fitted circuit
+        :param z_imag: real part of the observed values (real measurements)
+        :param z_hat_imag: real part of the predicted values from the fitted circuit
+        :return: R2 score of the fit (coefficient of determination) for both parts
+        '''
+
+        #validate 'z_real'
+        if not isinstance(z_real, np.ndarray):
+            raise TypeError(f'[EquivalentCircuit] "z_real" must be a Numpy Array! Curr. type = {type(z_real)}')
+
+        #validate 'z_hat_real'
+        if not isinstance(z_hat_real, np.ndarray):
+            raise TypeError(f'[EquivalentCircuit] "z_hat_real" must be a Numpy Array! Curr. type = {type(z_hat_real)}')
+
+        #validate 'z_imag'
+        if not isinstance(z_imag, np.ndarray):
+            raise TypeError(f'[EquivalentCircuit] "z_imag" must be a Numpy Array! Curr. type = {type(z_imag)}')
+
+        #validate 'z_hat_imag'
+        if not isinstance(z_hat_imag, np.ndarray):
+            raise TypeError(
+                f'[EquivalentCircuit] "z_hat_imag" must be a Numpy Array! Curr. type = {type(z_hat_imag)}')
+
+        #validate real shape
+        if len(z_real) != len(z_hat_real):
+            raise ValueError(f'[EquivalentCircuit] "z_real" and "z_hat_real" must match in length!')
+
+        #validate imaginary shape
+        if len(z_imag) != len(z_hat_imag):
+            raise ValueError(f'[EquivalentCircuit] "z_imag" and "z_hat_imag" must match in length!')
+
+        #validate complex shape
+        if len(z_real) != len(z_imag):
+            raise ValueError(f'[EquivalentCircuit] real and imaginary parts must match in length!]')
+
+        #compute the r2 score for both complex parts
+        r2_real = self.r2_score(z_real, z_hat_real) #r2 score of the real part
+        r2_imag = self.r2_score(z_imag, z_hat_imag) #r2 score of the imaginary part
+
+        return r2_real, r2_imag
+
+
+
+
