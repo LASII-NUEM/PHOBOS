@@ -309,14 +309,14 @@ class TempPressData:
             raw_line = raw_line.split('\t') #split on tabs
 
             #if a line has less than 5 elements, skip
-            if len(raw_line) < 5:
+            if len(raw_line) < 4:
                 continue
 
             self.relative_timestamp[i] = float(raw_line[0]) #update timestamps
             relative_delta = datetime.timedelta(seconds=self.relative_timestamp[i]-self.relative_timestamp[0]) #time delta for the current sample
             self.human_timestamp[i] = abs_timestamp + relative_delta #human timestamp from the absolute
-            self.measured_temp[i] = float(raw_line[1]) #update temperature readings
-            self.measured_pressure[i] = float(raw_line[2]) #update pressure readings
+            self.measured_temp[i] = float(raw_line[3]) #update temperature readings
+            self.measured_pressure[i] = float(raw_line[1]) #update pressure readings
 
         self.human_timestamp = self.human_timestamp.astype('datetime64') #convert from datetime object to numpy datetime
 

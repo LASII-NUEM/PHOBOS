@@ -63,11 +63,13 @@ def read(filename:str, setup:str):
                         else:
                             date_init = date_line[1] #extract the date from the list of dates
                             time_init = time_line[1] #extract the time from the list of timestamps
-                            time_init_split = time_init.split(',') #separate integer to decimal part (',' as decimal notation)
-                            time_init_split[1] = '0.' + time_init_split[1] #pre-pends 0 to decimal notation
-                            timestamp_init = date_init + " " + time_init_split[0]
-                            timestamp_init = datetime.datetime.strptime(timestamp_init, "%Y/%m/%d %H:%M:%S")
-                            second_delta = datetime.timedelta(seconds=float(time_init_split[1])) #floating point seconds
+                            if setup == "freezer":
+                                time_init_split = time_init.split(',')
+                            else:
+                                time_init_split = time_init.split('.') #separate integer to decimal part (',' as decimal notation)
+                            timestamp_init = date_init + " " + time_init_split[0] + "," + time_init_split[1][:3]
+                            timestamp_init = datetime.datetime.strptime(timestamp_init, "%Y/%m/%d %H:%M:%S,%f")
+                            second_delta = datetime.timedelta(seconds=float(timestamp_init.second + timestamp_init.microsecond*1e-6)) #floating point seconds
                             timestamp_init += second_delta #add the floating point seconds to the object
                             timestamp_defined = True #commute the flag
                 else:

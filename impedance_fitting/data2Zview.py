@@ -21,7 +21,7 @@ def saveZfile(a, b, c,filename, folder, header=("Freq (Hz)","Z(real)","Z(imag)")
         path = os.path.join(folder, f"{filename}.txt")
 
         data = np.column_stack((a, b, c))
-        np.savetxt(path, data, delimiter="\t", header="\t".join(header), comments="", fmt="%.15g")
+        np.savetxt(path, data, delimiter=",", comments="", fmt="%.15g")
     return
 
 #Impedance Analyzer load acquisition
@@ -48,10 +48,10 @@ IA_distilled_z_real, IA_distilled_z_imag = characterization_utils.complex_impeda
 IA_deionized_eps_real, IA_deionized_eps_imag = characterization_utils.dielectric_params_corrected(IA_spec_deionized_obj, IA_spec_air_obj, IA_freqs) #compute the spectrum based on the experimental data
 IA_deionized_z_real, IA_deionized_z_imag = characterization_utils.complex_impedance(IA_spec_deionized_obj, IA_freqs) #compute the complex impedance based on the experimental data
 
-saveZfile(IA_freqs,IA_tap_z_real, IA_tap_z_imag, filename = "IA_tap", folder = folderZview_IA)
-saveZfile(IA_freqs,IA_mineral_z_real, IA_mineral_z_imag, filename = "IA_mineral", folder = folderZview_IA)
-saveZfile(IA_freqs,IA_distilled_z_real, IA_distilled_z_imag, filename = "IA_distilled", folder = folderZview_IA)
-saveZfile(IA_freqs,IA_deionized_z_real, IA_deionized_z_imag, filename = "IA_deionized", folder = folderZview_IA)
+# saveZfile(IA_freqs,IA_tap_z_real, IA_tap_z_imag, filename = "IA_tap", folder = folderZview_IA)
+# saveZfile(IA_freqs,IA_mineral_z_real, IA_mineral_z_imag, filename = "IA_mineral", folder = folderZview_IA)
+# saveZfile(IA_freqs,IA_distilled_z_real, IA_distilled_z_imag, filename = "IA_distilled", folder = folderZview_IA)
+# saveZfile(IA_freqs,IA_deionized_z_real, IA_deionized_z_imag, filename = "IA_deionized", folder = folderZview_IA)
 
 # # LCR spectroscopy acquisition
 LCR_spec_air_obj = file_lcr.read('../data/test_media_12_01/c0.csv', n_samples=3, sweeptype="cell", acquisition_mode="spectrum", aggregate=np.mean)
@@ -65,5 +65,5 @@ LCR_freqs = LCR_spec_air_obj.freqs
 LCR_tap_eps_real, LCR_tap_eps_imag = characterization_utils.dielectric_params_corrected(LCR_spec_tap_obj, LCR_spec_air_obj, LCR_freqs) #compute the spectrum based on the experimental data
 LCR_tap_z_real, LCR_tap_z_imag = characterization_utils.complex_impedance(LCR_spec_tap_obj, LCR_freqs) #compute the complex impedance based on the experimental data
 
-saveZfile(LCR_freqs,LCR_tap_z_real, LCR_tap_z_imag, filename = "LCR_tap", folder = folderZview_LCR)
+saveZfile(LCR_freqs,LCR_tap_z_real, -LCR_tap_z_imag, filename = "LCR_tap_online", folder = folderZview_LCR)
 
