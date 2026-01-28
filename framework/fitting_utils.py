@@ -3,6 +3,32 @@ import numpy as np
 from scipy.optimize import curve_fit, least_squares, minimize
 import time
 
+def Fouquet2005(theta, args):
+    '''
+    :param theta: list with all the candidate values
+    :param args: list with all the arguments that won't be minimized
+    :return: impedance for the equivalent R - CPE || (R-Zws) circuit
+    '''
+    
+    #expand thetas into the components with scaling
+    theta = np.array(theta) * args[1] #scaling
+    R1 = theta[0]
+    R2 = theta[1]
+    Q = theta[2]
+    n = theta[3]
+    Rd = theta[4]
+    taud = theta[5]
+
+    #impedance computation
+    omega = args[0] #rad/s
+    Zws = (Rd*np.tanh((1j*omega*taud)**0.5))/((1j*omega*taud)**0.5) #warburg short-finite impedance
+    CPE = Q*((1j*omega)**n) #constant phase element
+    Zb2_n = R2 + Zws #num. of the CPE || (R2 - Zws) block
+    Zb2_d = 1 + R2*CPE + Zws*CPE #den. of the CPE || (R2 - Zws) block
+    Zb2 = Zb2_n/Zb2_d #impedance of the CPE || (R2 - Zws) block
+
+    return R1 + Zb2
+
 def Longo2020(theta, args):
     '''
     :param theta: list with all the candidate values
@@ -10,7 +36,7 @@ def Longo2020(theta, args):
     :return: impedance for the equivalent R||C - C || (R - R||CPE) circuit
     '''
 
-    #expand thetas into the components with scalling
+    #expand thetas into the components with scaling
     theta = np.array(theta) * args[1] #scaling
     R1 = theta[0]
     tau1 = theta[1]
@@ -30,29 +56,65 @@ def Longo2020(theta, args):
 
     return Z_b1 + Z_b2
 
-def Randles1947(theta, args):
+def Zurich2021(theta, args):
     '''
     :param theta: list with all the candidate values
     :param args: list with all the arguments that won't be minimized
-    :return: impedance for the equivalent R - R||C circuit
+    :return: impedance for the equivalent R - CPE||Zw - R||C circuit
     '''
 
-    #expand thetas into the components with scalling
-    theta = np.array(theta)*args[1] #scaling
+    #expand thetas into the components with scaling
+    theta = np.array(theta) * args[1] #scaling
     R1 = theta[0]
-    R2 = theta[1]
-    tau2 = theta[2]
+    Q = theta[1]
+    n = theta[2]
+    #Rd = theta[3]
+    #taud = theta[4]
+    Zws = theta[3]
+    R2 = theta[4]
+    C = theta[5]
 
     #impedance computation
     omega = args[0] #rad/s
-    Z_b2d = 1 + 1j*omega*tau2 #den of the p(C2, R2-p(R3, CPE)) block
-    Z_b2 = R2/Z_b2d #p(C2, R2-p(R3, CPE)) block
-    return R1 + Z_b2
+    #Zws = (Rd*np.tanh((1j*omega*taud)**0.5))/((1j*omega*taud)** 0.5) #warburg short-finite impedance
+    CPE = Q*((1j*omega)**n) #constant phase element
+    Z_b2_d = 1 + CPE*Zws #den. of the CPE||Zws block
+    Z_b2 = Zws/Z_b2_d #impedance of the CPE||Zws block
+    Z_b3_d = 1 + 1j*omega*R2*C #den. of the R||C block
+    Z_b3 = R2/Z_b3_d #impedance of the R||C block
+
+    return R1 + Z_b2 + Z_b3
+
+def Awayssa2025(theta, args):
+    '''
+    :param theta: list with all the candidate values
+    :param args: list with all the arguments that won't be minimized
+    :return: impedance for the equivalent C || (R - R||C - L) circuit
+    '''
+
+    #expand thetas into the components with scaling
+    theta = np.array(theta) * args[1] #scaling
+    R1 = theta[0]
+    R2 = theta[1]
+    C1 = theta[2]
+    L1 = theta[3]
+    C2 = theta[4]
+
+    #impedance computation
+    omega = args[0] #rad/s
+    tau2 = 1j*omega*R2*C1 #j2R2C1
+    induct_imp = 1j*omega*L1 #impedance of the inductor
+    Z_num = R1 + R2 + tau2*(R1+induct_imp) + induct_imp #num. of the impedance equivalent circuit
+    Z_den = 1 + tau2*(1+induct_imp+(1j*omega*R1*C2)) + (1j*omega*C2)*(R1+R2+induct_imp) #den. of the impedance equivalent circuit
+
+    return Z_num/Z_den
 
 #dictionary to handle function calls -> number of expected params and the function pointer
 function_handlers = {
     "longo2020": {"n_params": 8, "function_ptr": Longo2020, "bounds": [(0,np.inf), (0,np.inf), (0,np.inf), (0,np.inf), (0,np.inf), (0,np.inf), (0,1), (0,np.inf)]},
-    "randles1947": {"n_params": 3, "function_ptr": Randles1947, "bounds": [(0,np.inf), (0,np.inf), (0,np.inf)]}
+    "fouquet2005": {"n_params": 6, "function_ptr": Fouquet2005, "bounds": [(0,np.inf), (0,np.inf), (0,np.inf), (0,1), (0,np.inf), (0,np.inf)]},
+    "zurich2021": {"n_params": 6, "function_ptr": Zurich2021, "bounds": [(0,np.inf), (0,np.inf), (0,1), (0,np.inf), (0,np.inf), (0,np.inf)]},
+    "awayssa2025": {"n_params": 5, "function_ptr": Awayssa2025, "bounds": [(0,np.inf), (0,np.inf), (0,np.inf), (0,np.inf), (0,np.inf)]}
 }
 
 class OptimizerResults:
