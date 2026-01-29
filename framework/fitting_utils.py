@@ -152,7 +152,7 @@ class OptimizerResults:
         if opt_params_scaled is not None:
             self.opt_params_scaled = opt_params_scaled
         if opt_cost is not None:
-            self.opt_fun = opt_cost
+            self.opt_cost = opt_cost
         if opt_fit is not None:
             self.opt_fit = opt_fit
         if r2_score_real is not None:
@@ -197,7 +197,7 @@ class EquivalentCircuit:
         self.z_meas_imag = z_meas_imag
         self.z_meas = z_meas_real - 1j*z_meas_imag #complex impedance
 
-    def complex_MSE(self, theta, args):
+    def CUMSE(self, theta, args):
         '''
         :param z_hat: the complex impedance computed from the fitted circuit
         :param z_meas: the complex impedance measured from the real system
@@ -244,8 +244,9 @@ class EquivalentCircuit:
         bounds = function_handlers[self.topology]["bounds"] #optimization boundaries
         if self.fit_method == "BFGS":
             t_init = time.time()
-            fit_obj = minimize(self.complex_MSE, initial_guess, args=([self.z_meas, omega, scaling_array],), bounds=bounds, method='L-BFGS-B')
+            fit_obj = minimize(self.CUMSE, initial_guess, args=([self.z_meas, omega, scaling_array],), bounds=bounds, method='L-BFGS-B')
             t_elapsed = time.time() - t_init
+            print(f'[EquivalentCircuit] BFGS fit elapsed time = {t_elapsed} s')
             opt_fit = self.circuit_impedance(fit_obj.x, [omega, scaling_array]) #compute the circuit for the optimal values
             r2_real, r2_imag = self.complex_r2_score(self.z_meas_real, opt_fit.real, self.z_meas_imag, -opt_fit.imag) #r2 score for both complex parts
             return OptimizerResults(opt_params=fit_obj.x, opt_params_scaled=fit_obj.x*scaling_array, opt_cost=fit_obj.fun,
