@@ -207,7 +207,7 @@ class EquivalentCircuit:
         z_hat = self.circuit_impedance(theta, [args[1], args[2]]) #compute the model for the arguments
         z_hat = z_hat.astype('complex')
         args[0] = args[0].astype('complex')
-        SSE = np.sum(np.abs((args[0].real-z_hat.real)*(args[0].imag-z_hat.imag)))
+        SSE = np.sum(((args[0].real-z_hat.real)**2)+((args[0].imag-z_hat.imag)**2))
         #SSE = np.sum((np.abs(args[0]) - np.abs(z_hat))**2) #sum of squared errors
         return SSE / len(z_hat)
 

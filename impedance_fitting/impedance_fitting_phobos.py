@@ -11,7 +11,7 @@ spec_h2o_obj = file_lcr.read('../data/testICE_10_12_25/c1.csv', n_samples=3, swe
 #Impedance fitting
 fit_obj = fitting_utils.EquivalentCircuit("Longo2020", spec_ice_obj, spec_ice_obj.freqs) #quivalent circuit object
 fit_params = fit_obj.fit_circuit(np.array([1.6, 1, 0.9, 1, 48, 1.5, 1, 2]),
-                                 np.array([1e4, 1e-7, 1e6, 1e-2, 1e2, 1e-1, 1, 1]),
+                                 np.array([1e3, 1e-7, 1e6, 1e-2, 1e2, 1e-1, 1, 1]),
                                  method="BFGS")
 
 #plot

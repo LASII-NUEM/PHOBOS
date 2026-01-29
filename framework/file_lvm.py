@@ -6,7 +6,7 @@ from framework import data_types
 def read(filename:str, setup:str):
     '''
     :param filename: path where the .lvm is stored
-    :param setup: define with type of test the data was taken from
+    :param setup: define which type of test the data was taken from
     :param timezone: timezone to convert unix timestamp to human timestamp
     '''
 
