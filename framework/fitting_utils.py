@@ -85,6 +85,33 @@ def Zurich2021(theta, args):
 
     return R1 + Z_b2 + Z_b3
 
+def Hong2021(theta, args):
+    '''
+    :param theta: list with all the candidate values
+    :param args: list with all the arguments that won't be minimized
+    :return: impedance for the equivalent R - CPE || (R - CPE||R) circuit
+    '''
+
+    #expand thetas into the components with scaling
+    theta = np.array(theta) * args[1] #scaling
+    R1 = theta[0]
+    Q1 = theta[1]
+    n1 = theta[2]
+    R2 = theta[3]
+    Q2 = theta[4]
+    n2 = theta[5]
+    R3 = theta[6]
+
+    #impedance computation
+    omega = args[0] #rad/s
+    CPE1 = Q1*((1j*omega)**n1) #constant phase element
+    CPE2 = Q2*((1j*omega)**n2) #constant phase element
+    Z_b2_num = R2 + (R3/(1+R3*CPE2)) #num. of the CPE || (R - CPE||R) block
+    Z_b2_den = 1 + R2*CPE1 + ((R3*CPE1)/(1+R3*CPE2)) #den. of the CPE || (R - CPE||R) block
+    Z_b2 = Z_b2_num/Z_b2_den #impedance of the CPE || (R - CPE||R) block
+
+    return R1 + Z_b2
+
 def Awayssa2025(theta, args):
     '''
     :param theta: list with all the candidate values
@@ -114,7 +141,8 @@ function_handlers = {
     "longo2020": {"n_params": 8, "function_ptr": Longo2020, "bounds": [(0,np.inf), (0,np.inf), (0,np.inf), (0,np.inf), (0,np.inf), (0,np.inf), (0,1), (0,np.inf)]},
     "fouquet2005": {"n_params": 6, "function_ptr": Fouquet2005, "bounds": [(0,np.inf), (0,np.inf), (0,np.inf), (0,1), (0,np.inf), (0,np.inf)]},
     "zurich2021": {"n_params": 6, "function_ptr": Zurich2021, "bounds": [(0,np.inf), (0,np.inf), (0,1), (0,np.inf), (0,np.inf), (0,np.inf)]},
-    "awayssa2025": {"n_params": 5, "function_ptr": Awayssa2025, "bounds": [(0,np.inf), (0,np.inf), (0,np.inf), (0,np.inf), (0,np.inf)]}
+    "awayssa2025": {"n_params": 5, "function_ptr": Awayssa2025, "bounds": [(0,np.inf), (0,np.inf), (0,np.inf), (0,np.inf), (0,np.inf)]},
+    "hong2021": {"n_params": 7, "function_ptr": Hong2021, "bounds": [(0,np.inf), (0,np.inf), (0,1), (0,np.inf), (0,np.inf), (0,1), (0,np.inf)]}
 }
 
 class OptimizerResults:
