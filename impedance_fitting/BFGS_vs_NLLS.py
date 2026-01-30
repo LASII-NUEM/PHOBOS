@@ -1,5 +1,4 @@
-from scipy.optimize import curve_fit
-from framework import fitting_utils, file_lcr, equivalent_circuits
+from framework import fitting_utils, file_lcr
 import numpy as np
 import matplotlib
 matplotlib.use('TkAgg')
@@ -19,14 +18,21 @@ fit_params_BFGS = fit_obj.fit_circuit(init_guess, scaling_array, method="BFGS")
 fit_params_NLLS = fit_obj.fit_circuit(init_guess, scaling_array, method="NLLS")
 
 #plot
-plt.figure()
+fig, ax = plt.subplots()
 leg = []
-plt.scatter(fit_obj.z_meas_real, fit_obj.z_meas_imag, marker='o', color="tab:blue", s=20)
+ax.scatter(fit_obj.z_meas_real, fit_obj.z_meas_imag, marker='o', color="tab:blue", s=20)
 leg.append('measured')
-plt.plot(fit_params_BFGS.opt_fit.real, -fit_params_BFGS.opt_fit.imag, color="tab:orange")
+ax.plot(fit_params_BFGS.opt_fit.real, -fit_params_BFGS.opt_fit.imag, color="tab:orange")
 leg.append('BFGS')
-plt.plot(fit_params_NLLS.opt_fit.real, -fit_params_NLLS.opt_fit.imag, color="tab:green")
+ax.plot(fit_params_NLLS.opt_fit.real, -fit_params_NLLS.opt_fit.imag, color="tab:green")
 leg.append('NLLS')
+x1, x2, y1, y2 = -1000, 20000, 1000, 12000
+axins = ax.inset_axes([0.5, 0.18, 0.4, 0.4],
+                      xlim=(x1, x2), ylim=(y1, y2))
+axins.scatter(fit_obj.z_meas_real, fit_obj.z_meas_imag, marker='o', color="tab:blue")
+axins.plot(fit_params_BFGS.opt_fit.real, -fit_params_BFGS.opt_fit.imag, color="tab:orange")
+axins.plot(fit_params_NLLS.opt_fit.real, -fit_params_NLLS.opt_fit.imag, color="tab:green")
+ax.indicate_inset_zoom(axins, edgecolor="black", linewidth=1.5)
 plt.xlabel("Z'")
 plt.ylabel("Z''")
 plt.legend(leg)
@@ -36,27 +42,29 @@ plt.show()
 plt.figure()
 plt.subplot(1,2,1)
 leg = []
-plt.scatter(np.log10(spec_ice_obj.freqs), np.abs(fit_obj.z_meas), s=20)
+plt.scatter(spec_ice_obj.freqs, np.abs(fit_obj.z_meas), s=20)
 leg.append('measured')
-plt.plot(np.log10(spec_ice_obj.freqs), np.abs(fit_params_BFGS.opt_fit), color="tab:orange")
+plt.plot(spec_ice_obj.freqs, np.abs(fit_params_BFGS.opt_fit), color="tab:orange")
 leg.append('BFGS')
-plt.plot(np.log10(spec_ice_obj.freqs), np.abs(fit_params_NLLS.opt_fit), color="tab:green")
+plt.plot(spec_ice_obj.freqs, np.abs(fit_params_NLLS.opt_fit), color="tab:green")
 leg.append('NLLS')
 plt.ylabel("|Z|")
-plt.xlabel("log(Frequency)")
+plt.xlabel("Frequency [Hz]")
+plt.xscale('log')
 plt.legend(leg)
 plt.grid()
 
 plt.subplot(1,2,2)
 leg = []
-plt.scatter(np.log10(spec_ice_obj.freqs), -np.angle(fit_obj.z_meas.astype('complex')), s=20)
+plt.scatter(spec_ice_obj.freqs, np.angle(fit_obj.z_meas.astype('complex')), s=20)
 leg.append('measured')
-plt.plot(np.log10(spec_ice_obj.freqs), -np.angle(fit_params_BFGS.opt_fit), color="tab:orange")
+plt.plot(spec_ice_obj.freqs, np.angle(fit_params_BFGS.opt_fit), color="tab:orange")
 leg.append('BFGS')
-plt.plot(np.log10(spec_ice_obj.freqs), -np.angle(fit_params_NLLS.opt_fit), color="tab:green")
+plt.plot(spec_ice_obj.freqs, np.angle(fit_params_NLLS.opt_fit), color="tab:green")
 leg.append('NLLS')
-plt.ylabel("-∠Z")
-plt.xlabel("log(Frequency)")
+plt.ylabel("∠Z [rad]")
+plt.xlabel("Frequency [Hz]")
+plt.xscale('log')
 plt.legend(leg)
 plt.grid()
 plt.show()

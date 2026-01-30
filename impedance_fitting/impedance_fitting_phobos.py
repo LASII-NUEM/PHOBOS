@@ -15,12 +15,19 @@ fit_params = fit_obj.fit_circuit(np.array([1.6, 1, 0.9, 1, 48, 1.5, 1, 2]),
                                  method="BFGS")
 
 #plot
-plt.figure()
+fig, ax = plt.subplots()
 leg = []
-plt.scatter(fit_obj.z_meas_real, fit_obj.z_meas_imag, marker='o', color="tab:blue")
+ax.scatter(fit_obj.z_meas_real, fit_obj.z_meas_imag, marker='o', color="tab:blue")
 leg.append('ice measured')
-plt.plot(fit_params.opt_fit.real, -fit_params.opt_fit.imag, color="tab:orange")
+ax.plot(fit_params.opt_fit.real, -fit_params.opt_fit.imag, color="tab:orange")
 leg.append('Longo2020')
+x1, x2, y1, y2 = -1000, 20000, 1000, 12000
+axins = ax.inset_axes([0.5, 0.18, 0.4, 0.4],
+                      xlim=(x1, x2), ylim=(y1, y2))
+axins.scatter(fit_obj.z_meas_real, fit_obj.z_meas_imag, marker='o', color="tab:blue")
+axins.plot(fit_params.opt_fit.real, -fit_params.opt_fit.imag, color="tab:orange")
+#axins.grid()
+ax.indicate_inset_zoom(axins, edgecolor="black", linewidth=1.5)
 plt.xlabel("Z'")
 plt.ylabel("Z''")
 plt.legend(leg)
