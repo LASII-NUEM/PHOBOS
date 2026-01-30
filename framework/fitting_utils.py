@@ -1,152 +1,20 @@
-from framework import characterization_utils, data_types
+from framework import characterization_utils, data_types, equivalent_circuits
 import numpy as np
-from scipy.optimize import curve_fit, least_squares, minimize
+from scipy.optimize import curve_fit, minimize
 import time
-
-def Fouquet2005(theta, args):
-    '''
-    :param theta: list with all the candidate values
-    :param args: list with all the arguments that won't be minimized
-    :return: impedance for the equivalent R - CPE || (R-Zws) circuit
-    '''
-    
-    #expand thetas into the components with scaling
-    theta = np.array(theta) * args[1] #scaling
-    R1 = theta[0]
-    R2 = theta[1]
-    Q = theta[2]
-    n = theta[3]
-    Rd = theta[4]
-    taud = theta[5]
-
-    #impedance computation
-    omega = args[0] #rad/s
-    Zws = (Rd*np.tanh((1j*omega*taud)**0.5))/((1j*omega*taud)**0.5) #warburg short-finite impedance
-    CPE = Q*((1j*omega)**n) #constant phase element
-    Zb2_n = R2 + Zws #num. of the CPE || (R2 - Zws) block
-    Zb2_d = 1 + R2*CPE + Zws*CPE #den. of the CPE || (R2 - Zws) block
-    Zb2 = Zb2_n/Zb2_d #impedance of the CPE || (R2 - Zws) block
-
-    return R1 + Zb2
-
-def Longo2020(theta, args):
-    '''
-    :param theta: list with all the candidate values
-    :param args: list with all the arguments that won't be minimized
-    :return: impedance for the equivalent R||C - C || (R - R||CPE) circuit
-    '''
-
-    #expand thetas into the components with scaling
-    theta = np.array(theta) * args[1] #scaling
-    R1 = theta[0]
-    tau1 = theta[1]
-    R2 = theta[2]
-    tau2 = theta[3]
-    R3 = theta[4]
-    tau3 = theta[5]
-    n3 = theta[6]
-    tau4 = theta[7]
-
-    #impedance computation
-    omega = args[0] #rad/s
-    Z_b1 = R1/(1+1j*omega*tau1) #p(R1,C1) block
-    Z_b2n = R2 + (R3/(1+(1j*omega*tau3)**n3)) #num of the p(C2, R2-p(R3, CPE)) block
-    Z_b2d = 1 + 1j*omega*tau2+(1j*omega*tau4)/(1+(1j*omega*tau3)**n3) #den of the p(C2, R2-p(R3, CPE)) block
-    Z_b2 = Z_b2n/Z_b2d #p(C2, R2-p(R3, CPE)) block
-
-    return Z_b1 + Z_b2
-
-def Zurich2021(theta, args):
-    '''
-    :param theta: list with all the candidate values
-    :param args: list with all the arguments that won't be minimized
-    :return: impedance for the equivalent R - CPE||Zw - R||C circuit
-    '''
-
-    #expand thetas into the components with scaling
-    theta = np.array(theta) * args[1] #scaling
-    R1 = theta[0]
-    Q = theta[1]
-    n = theta[2]
-    #Rd = theta[3]
-    #taud = theta[4]
-    Zws = theta[3]
-    R2 = theta[4]
-    C = theta[5]
-
-    #impedance computation
-    omega = args[0] #rad/s
-    #Zws = (Rd*np.tanh((1j*omega*taud)**0.5))/((1j*omega*taud)** 0.5) #warburg short-finite impedance
-    CPE = Q*((1j*omega)**n) #constant phase element
-    Z_b2_d = 1 + CPE*Zws #den. of the CPE||Zws block
-    Z_b2 = Zws/Z_b2_d #impedance of the CPE||Zws block
-    Z_b3_d = 1 + 1j*omega*R2*C #den. of the R||C block
-    Z_b3 = R2/Z_b3_d #impedance of the R||C block
-
-    return R1 + Z_b2 + Z_b3
-
-def Hong2021(theta, args):
-    '''
-    :param theta: list with all the candidate values
-    :param args: list with all the arguments that won't be minimized
-    :return: impedance for the equivalent R - CPE || (R - CPE||R) circuit
-    '''
-
-    #expand thetas into the components with scaling
-    theta = np.array(theta) * args[1] #scaling
-    R1 = theta[0]
-    Q1 = theta[1]
-    n1 = theta[2]
-    R2 = theta[3]
-    Q2 = theta[4]
-    n2 = theta[5]
-    R3 = theta[6]
-
-    #impedance computation
-    omega = args[0] #rad/s
-    CPE1 = Q1*((1j*omega)**n1) #constant phase element
-    CPE2 = Q2*((1j*omega)**n2) #constant phase element
-    Z_b2_num = R2 + (R3/(1+R3*CPE2)) #num. of the CPE || (R - CPE||R) block
-    Z_b2_den = 1 + R2*CPE1 + ((R3*CPE1)/(1+R3*CPE2)) #den. of the CPE || (R - CPE||R) block
-    Z_b2 = Z_b2_num/Z_b2_den #impedance of the CPE || (R - CPE||R) block
-
-    return R1 + Z_b2
-
-def Awayssa2025(theta, args):
-    '''
-    :param theta: list with all the candidate values
-    :param args: list with all the arguments that won't be minimized
-    :return: impedance for the equivalent C || (R - R||C - L) circuit
-    '''
-
-    #expand thetas into the components with scaling
-    theta = np.array(theta) * args[1] #scaling
-    R1 = theta[0]
-    R2 = theta[1]
-    C1 = theta[2]
-    L1 = theta[3]
-    C2 = theta[4]
-
-    #impedance computation
-    omega = args[0] #rad/s
-    tau2 = 1j*omega*R2*C1 #j2R2C1
-    induct_imp = 1j*omega*L1 #impedance of the inductor
-    Z_num = R1 + R2 + tau2*(R1+induct_imp) + induct_imp #num. of the impedance equivalent circuit
-    Z_den = 1 + tau2*(1+induct_imp+(1j*omega*R1*C2)) + (1j*omega*C2)*(R1+R2+induct_imp) #den. of the impedance equivalent circuit
-
-    return Z_num/Z_den
+from functools import partial
 
 #dictionary to handle function calls -> number of expected params and the function pointer
 function_handlers = {
-    "longo2020": {"n_params": 8, "function_ptr": Longo2020, "bounds": [(0,np.inf), (0,np.inf), (0,np.inf), (0,np.inf), (0,np.inf), (0,np.inf), (0,1), (0,np.inf)]},
-    "fouquet2005": {"n_params": 6, "function_ptr": Fouquet2005, "bounds": [(0,np.inf), (0,np.inf), (0,np.inf), (0,1), (0,np.inf), (0,np.inf)]},
-    "zurich2021": {"n_params": 6, "function_ptr": Zurich2021, "bounds": [(0,np.inf), (0,np.inf), (0,1), (0,np.inf), (0,np.inf), (0,np.inf)]},
-    "awayssa2025": {"n_params": 5, "function_ptr": Awayssa2025, "bounds": [(0,np.inf), (0,np.inf), (0,np.inf), (0,np.inf), (0,np.inf)]},
-    "hong2021": {"n_params": 7, "function_ptr": Hong2021, "bounds": [(0,np.inf), (0,np.inf), (0,1), (0,np.inf), (0,np.inf), (0,1), (0,np.inf)]}
+    "longo2020": {"n_params": 8, "function_ptr": equivalent_circuits.Longo2020, "partial_function_ptr": equivalent_circuits.Longo2020_partial, "bounds": [(0,np.inf), (0,np.inf), (0,np.inf), (0,np.inf), (0,np.inf), (0,np.inf), (0,1), (0,np.inf)]},
+    "fouquet2005": {"n_params": 6, "function_ptr": equivalent_circuits.Fouquet2005, "partial_function_ptr": equivalent_circuits.Fouquet2005_partial, "bounds": [(0,np.inf), (0,np.inf), (0,np.inf), (0,1), (0,np.inf), (0,np.inf)]},
+    "zurich2021": {"n_params": 6, "function_ptr": equivalent_circuits.Zurich2021, "partial_function_ptr": equivalent_circuits.Zurich2021_partial, "bounds": [(0,np.inf), (0,np.inf), (0,1), (0,np.inf), (0,np.inf), (0,np.inf)]},
+    "awayssa2025": {"n_params": 5, "function_ptr": equivalent_circuits.Awayssa2025, "partial_function_ptr": equivalent_circuits.Awayssa2025_partial, "bounds": [(0,np.inf), (0,np.inf), (0,np.inf), (0,np.inf), (0,np.inf)]},
+    "hong2021": {"n_params": 7, "function_ptr": equivalent_circuits.Hong2021, "partial_function_ptr": equivalent_circuits.Hong2021_partial, "bounds": [(0,np.inf), (0,np.inf), (0,1), (0,np.inf), (0,np.inf), (0,1), (0,np.inf)]}
 }
 
 class OptimizerResults:
-    def __init__(self, opt_params=None, opt_params_scaled=None, opt_cost=None, opt_fit=None, r2_score_real=None, r2_score_imag=None, n_iter=None, t_elapsed=None):
+    def __init__(self, opt_params=None, opt_params_scaled=None, opt_cost=None, opt_fit=None, nmse_score=None, n_iter=None, t_elapsed=None):
         if opt_params is not None:
             self.opt_params = opt_params
         if opt_params_scaled is not None:
@@ -155,10 +23,8 @@ class OptimizerResults:
             self.opt_cost = opt_cost
         if opt_fit is not None:
             self.opt_fit = opt_fit
-        if r2_score_real is not None:
-            self.r2_score_real = r2_score_real
-        if r2_score_imag is not None:
-            self.r2_score_imag = r2_score_imag
+        if nmse_score is not None:
+            self.nmse_score = nmse_score
         if n_iter is not None:
             self.n_iter = n_iter
         if t_elapsed is not None:
@@ -178,7 +44,7 @@ class EquivalentCircuit:
         if topology not in valid_topologies:
             raise ValueError(f'[EquivalentCircuit] {topology} not implemented! Try: {valid_topologies}')
         self.topology = topology
-        self.circuit_impedance = function_handlers[self.topology]["function_ptr"]
+        self.circuit_impedance = None
         self.fit_method = None
 
         #validate data_medium
@@ -243,22 +109,45 @@ class EquivalentCircuit:
         omega = 2*np.pi*self.freqs #Hz to rad/s
         bounds = function_handlers[self.topology]["bounds"] #optimization boundaries
         if self.fit_method == "BFGS":
+            self.circuit_impedance = function_handlers[self.topology]["function_ptr"]
             t_init = time.time()
             fit_obj = minimize(self.CUMSE, initial_guess, args=([self.z_meas, omega, scaling_array],), bounds=bounds, method='L-BFGS-B')
             t_elapsed = time.time() - t_init
             print(f'[EquivalentCircuit] BFGS fit elapsed time = {t_elapsed} s')
             opt_fit = self.circuit_impedance(fit_obj.x, [omega, scaling_array]) #compute the circuit for the optimal values
-            r2_real, r2_imag = self.complex_r2_score(self.z_meas_real, opt_fit.real, self.z_meas_imag, -opt_fit.imag) #r2 score for both complex parts
+            nmse = self.NMSE(self.z_meas.astype("complex"), opt_fit.astype("complex")) #NMSE score for both complex parts
             return OptimizerResults(opt_params=fit_obj.x, opt_params_scaled=fit_obj.x*scaling_array, opt_cost=fit_obj.fun,
-                                    opt_fit=opt_fit, r2_score_real=r2_real, r2_score_imag=r2_imag, n_iter=fit_obj.nit, t_elapsed=t_elapsed) #return the optimized parameters
-        else:
-            print('...')
+                                    opt_fit=opt_fit, nmse_score=nmse, n_iter=fit_obj.nit, t_elapsed=t_elapsed) #return the optimized parameters
 
-    def r2_score(self, z:np.ndarray, z_hat:np.ndarray):
+        elif self.fit_method == "NLLS":
+            self.circuit_impedance = function_handlers[self.topology]["partial_function_ptr"]
+            bounds = np.array(bounds) #convert the boundaries to numpy array
+            bounds = ((bounds[:, 0]), (bounds[:, 1])) #curve_fit receives bounds as tuple
+
+            #handle the real and imaginary parts separately
+            circuit_impedance_real = partial(self.circuit_impedance, scaling=scaling_array, return_type="real") #set scaling and return_type to static inputs
+            circuit_impedance_imag = partial(self.circuit_impedance, scaling=scaling_array, return_type="imag") #set scaling and return_type to static inputs
+            t_init = time.time()
+            fit_params_real, fit_cov_real = curve_fit(circuit_impedance_real, omega, self.z_meas_real, p0=initial_guess, bounds=bounds)
+            fit_params_imag, fit_cov_imag = curve_fit(circuit_impedance_imag, omega, self.z_meas_imag, p0=initial_guess, bounds=bounds)
+            t_elapsed = time.time() - t_init
+            print(f'[EquivalentCircuit] NLLS fit elapsed time = {t_elapsed} s')
+            opt_fit_real = function_handlers[self.topology]["function_ptr"](fit_params_real, [omega, scaling_array]) #compute the circuit real output for the optimal values
+            opt_fit_imag = function_handlers[self.topology]["function_ptr"](fit_params_imag, [omega, scaling_array]) #compute the circuit imaginary output for the optimal values
+            opt_fit = opt_fit_real + 1j*opt_fit_imag #complex impedance of the fit
+            nmse = self.NMSE(self.z_meas.astype("complex"), opt_fit.astype("complex")) #NMSE score for both complex parts
+            return OptimizerResults(opt_params=[fit_params_real, fit_params_imag], opt_params_scaled=[fit_params_real*scaling_array, fit_params_imag]*scaling_array,
+                                    opt_fit=opt_fit, nmse_score=nmse, t_elapsed=t_elapsed) #return the optimized parameters
+
+        else:
+            raise ValueError(f'[EquivalentCircuit] method = {method} not implemented! Try: {valid_methods}')
+
+
+    def NMSE(self, z:np.ndarray, z_hat:np.ndarray):
         '''
         :param z: the observed values (real measurements)
         :param z_hat: the predicted values from the fitted circuit
-        :return: R2 score of the fit (coefficient of determination)
+        :return: NMSE of the fit
         '''
 
         #validate 'z'
@@ -273,56 +162,12 @@ class EquivalentCircuit:
         if len(z) != len(z_hat):
             raise ValueError(f'[EquivalentCircuit] "z" and "z_hat" must match in length!')
 
-        #coefficient of determination
-        z_mean = np.mean(z) #mean of the observed values
-        SSE = np.sum((z-z_hat)**2) #sum of the squared errors
-        SSTot = np.sum((z-z_mean)**2) #sum of squares
+        #normalized mean squared error
+        SSE = np.sum(((z_hat.real-z.real)**2) + ((z_hat.imag-z.imag)**2)) #sum of squared errors
+        SSO = np.sum((z.real**2) + (z.imag**2)) #sum of squared measurements
 
-        return 1 - (SSE/SSTot)
+        return SSE/SSO
 
-    def complex_r2_score(self, z_real: np.ndarray, z_hat_real: np.ndarray, z_imag: np.ndarray, z_hat_imag: np.ndarray):
-        '''
-        :param z_real: real part of the observed values (real measurements)
-        :param z_hat_real: real part of the predicted values from the fitted circuit
-        :param z_imag: real part of the observed values (real measurements)
-        :param z_hat_imag: real part of the predicted values from the fitted circuit
-        :return: R2 score of the fit (coefficient of determination) for both parts
-        '''
-
-        #validate 'z_real'
-        if not isinstance(z_real, np.ndarray):
-            raise TypeError(f'[EquivalentCircuit] "z_real" must be a Numpy Array! Curr. type = {type(z_real)}')
-
-        #validate 'z_hat_real'
-        if not isinstance(z_hat_real, np.ndarray):
-            raise TypeError(f'[EquivalentCircuit] "z_hat_real" must be a Numpy Array! Curr. type = {type(z_hat_real)}')
-
-        #validate 'z_imag'
-        if not isinstance(z_imag, np.ndarray):
-            raise TypeError(f'[EquivalentCircuit] "z_imag" must be a Numpy Array! Curr. type = {type(z_imag)}')
-
-        #validate 'z_hat_imag'
-        if not isinstance(z_hat_imag, np.ndarray):
-            raise TypeError(
-                f'[EquivalentCircuit] "z_hat_imag" must be a Numpy Array! Curr. type = {type(z_hat_imag)}')
-
-        #validate real shape
-        if len(z_real) != len(z_hat_real):
-            raise ValueError(f'[EquivalentCircuit] "z_real" and "z_hat_real" must match in length!')
-
-        #validate imaginary shape
-        if len(z_imag) != len(z_hat_imag):
-            raise ValueError(f'[EquivalentCircuit] "z_imag" and "z_hat_imag" must match in length!')
-
-        #validate complex shape
-        if len(z_real) != len(z_imag):
-            raise ValueError(f'[EquivalentCircuit] real and imaginary parts must match in length!]')
-
-        #compute the r2 score for both complex parts
-        r2_real = self.r2_score(z_real, z_hat_real) #r2 score of the real part
-        r2_imag = self.r2_score(z_imag, z_hat_imag) #r2 score of the imaginary part
-
-        return r2_real, r2_imag
 
 
 

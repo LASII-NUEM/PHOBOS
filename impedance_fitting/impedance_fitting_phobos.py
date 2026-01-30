@@ -3,7 +3,6 @@ import numpy as np
 import matplotlib
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
-import time
 
 #PHOBOS spectroscopy acquisition
 spec_ice_obj = file_lcr.read('../data/testICE_10_12_25/cice.csv', n_samples=3, sweeptype="cell", acquisition_mode="spectrum", aggregate=np.mean)
