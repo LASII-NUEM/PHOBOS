@@ -321,12 +321,13 @@ class TempPressData:
         self.human_timestamp = self.human_timestamp.astype('datetime64') #convert from datetime object to numpy datetime
 
 class PHOBOSData:
-    def __init__(self, filename_electrode:str, filename_temperature=None, n_samples=1, normalize=True, sweeptype="flange", acquisition_mode="freq", aggregate=None, timezone=-3):
+    def __init__(self, filename_electrode:str, filename_temperature=None, n_samples=1, normalize=True, temp_setup="freezer", sweeptype="flange", acquisition_mode="freq", aggregate=None, timezone=-3):
         '''
         :param filename_electrode: path where the .csv is stored
         :param filename_temperature: path where the .lvm is stored
         :param n_samples: samples per pair swept
         :param normalize: apply media-based normalization
+        :param temp_setup: define with type of test the data was taken from
         :param sweeptype: which hardware was used to acquire the signals
         :param acquisition_mode: how the data is expected to be organized ('flange' for 10-mode sweep or 'spectrum' for full spectroscopy)
         :param aggregate: how to organize the data for each mode (None as default)
@@ -345,7 +346,7 @@ class PHOBOSData:
 
         #process temperature data into its custom structure
         try:
-            temperature_data = file_lvm.read(filename_temperature)
+            temperature_data = file_lvm.read(filename_temperature, temp_setup)
             self.thermo_readings = temperature_data.measured_temp #temperatures acquired by each thermocouple
             self.temp_human_timestamp = temperature_data.human_timestamp #human timestamps
             self.n_thermosensors = temperature_data.n_sensors #number of thermocouples

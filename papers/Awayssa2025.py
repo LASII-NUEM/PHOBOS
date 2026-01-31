@@ -1,4 +1,4 @@
-from framework import fitting_utils
+from framework import fitting_utils, equivalent_circuits
 import numpy as np
 import matplotlib
 matplotlib.use('TkAgg')
@@ -10,7 +10,7 @@ omegas = 2*np.pi*freqs #rad/s
 #tap water impedance
 params = [175, 179, 6.345, 7.47, 38.29]
 scaling = [1, 1, 1e-6, 1e-9, 1e-12]
-z_complex = fitting_utils.Awayssa2025(params, [omegas, scaling])
+z_complex = equivalent_circuits.Awayssa2025(params, [omegas, scaling])
 z_complex = z_complex.astype("complex")
 
 plt.figure(1)
