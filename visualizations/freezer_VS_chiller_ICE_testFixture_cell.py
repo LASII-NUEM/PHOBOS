@@ -96,29 +96,29 @@ saveZfile(LCR_freqs,LCR_C_Cice_z_real, -LCR_C_Cice_z_real, filename = "LCR_C_Cic
 #         Visualization
 
 # IA_idx = np.argmin(np.abs(IA_freqs-100))
-# # IA_c_C1_z_real = IA_C_C1_z_real[IA_idx:]
+# # IA_c_C1_z_real = IA_C_C1_z_real[IA_idx:]'''
 # # IA_c_C1_z_imag = IA_C_C1_z_imag[IA_idx:]
 # #
 # # plt.plot(IA_c_C1_z_real, IA_c_C1_z_imag)
 # # plt.grid()
 # # plt.show()
 
-# visualization_utils.nyquist(IA_C_C1_obj, IA_freqs, labels=["Water"], title="IA_C_C1")
-# visualization_utils.nyquist(IA_C_Cice_obj, IA_freqs, labels=["ICE"], title="IA_C_Cice")
-# visualization_utils.nyquist(IA_F_C1_obj, IA_freqs, labels=["Water"],  title="IA_F_C1")
-# visualization_utils.nyquist(IA_F_Cice_obj, IA_freqs, labels=["ICE"],  title="IA_F_Cice")
-#
-# visualization_utils.nyquist(LCR_C_C1_obj, LCR_freqs, labels=["Water"], title="LCR_C_C1")
-# visualization_utils.nyquist(LCR_C_Cice_obj, LCR_freqs, labels=["ICE"], title="LCR_C_Cice")
-# visualization_utils.nyquist(LCR_F_C1_obj, LCR_freqs, labels=["Water"], title="LCR_F_C1")
-# visualization_utils.nyquist(LCR_F_Cice_obj, LCR_freqs, labels=["ICE"], title="LCR_F_Cice")
+visualization_utils.nyquist(IA_C_C1_obj, IA_freqs, labels=["Water"], title="IA_C_C1")
+visualization_utils.nyquist(IA_C_Cice_obj, IA_freqs, labels=["ICE"], title="IA_C_Cice")
+visualization_utils.nyquist(IA_F_C1_obj, IA_freqs, labels=["Water"],  title="IA_F_C1")
+visualization_utils.nyquist(IA_F_Cice_obj, IA_freqs, labels=["ICE"],  title="IA_F_Cice")
+
+visualization_utils.nyquist(LCR_C_C1_obj, LCR_freqs, labels=["Water"], title="LCR_C_C1")
+visualization_utils.nyquist(LCR_C_Cice_obj, LCR_freqs, labels=["ICE"], title="LCR_C_Cice")
+visualization_utils.nyquist(LCR_F_C1_obj, LCR_freqs, labels=["Water"], title="LCR_F_C1")
+visualization_utils.nyquist(LCR_F_Cice_obj, LCR_freqs, labels=["ICE"], title="LCR_F_Cice")
 
 
 plotdict = {}
-# plotdict["data_IA_F"] = [IA_F_C1_obj, IA_F_Cice_obj]
-# plotdict["data_IA_C"] = [IA_C_C1_obj, IA_C_Cice_obj]
-# plotdict["data_LCR_F"] = [LCR_F_C1_obj, LCR_F_Cice_obj]
-# plotdict["data_LCR_C"] = [LCR_C_C1_obj, LCR_C_Cice_obj]
+plotdict["data_IA_F"] = [IA_F_C1_obj, IA_F_Cice_obj]
+plotdict["data_IA_C"] = [IA_C_C1_obj, IA_C_Cice_obj]
+plotdict["data_LCR_F"] = [LCR_F_C1_obj, LCR_F_Cice_obj]
+plotdict["data_LCR_C"] = [LCR_C_C1_obj, LCR_C_Cice_obj]
 
 for key, value in plotdict.items():
 
