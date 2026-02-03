@@ -3,6 +3,7 @@ import numpy as np
 from scipy.optimize import curve_fit, minimize
 import time
 from functools import partial
+from impedance_fitting import script_to_overwrite_local_impedancedotpy_files
 
 #dictionary to handle function calls -> number of expected params and the function pointer
 function_handlers = {
@@ -170,6 +171,161 @@ class EquivalentCircuit:
         SSO = np.sum((z.real**2) + (z.imag**2)) #sum of squared measurements
 
         return SSE/SSO
+
+class LinearKramersKronig:
+    def __init__(self, data_medium:data_types.SpectroscopyData, freqs:np.ndarray, c=0.5, max_iter=100, add_capacitor=True):
+        '''
+        :param data_medium: SpectrumData structure for the frequency sweep in the medium to be characterized
+        :param freqs: array with the swept frequencies
+        :param c: threshold for overfitting criterion (mu)
+        :param max_iter: maximum number of M RC pairs
+        :param add_capacitor: flag to add a capacitor in series to the R_ohm+L+R_k block
+        '''
+
+        #validate data_medium
+        if not isinstance(data_medium, data_types.SpectroscopyData):
+            raise TypeError(f'[KramersKronig] "data_medium" must be a SpectrumData structure! Curr. type = {type(data_medium)}')
+        self.data_medium = data_medium
+
+        #validate freqs
+        if not isinstance(freqs, np.ndarray):
+            raise TypeError(f'[KramersKronig] "freqs" must be a Numpy Array! Curr. type = {type(freqs)}')
+        self.freqs = freqs
+
+        #compute the measured impedance from the SpectroscopyData objects
+        z_meas_real, z_meas_imag = characterization_utils.complex_impedance(data_medium, freqs)
+        self.z_meas_real = z_meas_real
+        self.z_meas_imag = z_meas_imag
+        self.z_meas = z_meas_real - 1j*z_meas_imag #complex impedance
+
+        #fit routine
+        self.tau = None #distribution of the time constants
+        t_init = time.time()
+        self.fit_params, self.fit_components = self.validate_data(self.z_meas, self.freqs, c=c, max_iter=max_iter, add_capacitor=add_capacitor) #run the LKK algorithm
+        self.t_elapsed = time.time() - t_init #store the computation time of the algorithm
+        self.z_hat_real, self.z_hat_imag = self.generate_MRCircuit(self.freqs, self.fit_params, self.tau) #compute the complex impedance for the fitted value
+        self.z_hat = self.z_hat_real + 1j*self.z_hat_imag
+        self.fit_residues_real, self.fit_residues_imag = self.compute_residues(self.z_meas, self. z_hat)
+
+    def compute_residues(self, z, z_hat):
+        '''
+        :param z: the real measured complex impedance values
+        :param z_hat: the fitted complex impedance values
+        :return: the normalized residues for both real and imag parts
+        '''
+
+        z = z.astype("complex")
+        z_hat = z_hat.astype("complex")
+
+        return (z.real*z_hat.real)/np.abs(z), (z.imag*z_hat.imag)/np.abs(z)
+
+    def compute_mu(self, Rk):
+        '''
+        :param Rk: the fitted Rk components from the linear kramers-kronig test
+        :return: the overfitting criterion value
+        '''
+
+        neg_Rk = Rk[Rk<0] #negative signed ohmic components
+        pos_Rk = Rk[Rk>=0] #positive signed ohmic components
+
+        return 1 - np.sum(np.abs(neg_Rk))/np.sum(np.abs(pos_Rk))
+
+    def validate_data(self, z_meas, freqs, c=0.5, max_iter=100, add_capacitor=True):
+        '''
+        :param z_meas: measured complex impedance values (real and imaginary)
+        :param freqs: array with the swept frequencies
+        :param c: threshold for overfitting criterion (mu)
+        :param max_iter: maximum number of M RC pairs
+        :param add_capacitor: flag to add a capacitor in series to the R_ohm+L+R_k block
+        :return: the fitted elements of the M RC circuit
+        '''
+
+        M = 0 #variable to monitor the number of RC pairs added to the circuit
+        z_meas = z_meas.astype("complex") #convert to complex object (extract real and imag value separately)
+        omega = 2*np.pi*freqs #rad/s to Hz
+        while True:
+            M += 1 #update the M RC components number
+
+            #distribution of time constants
+            self.tau = np.zeros(shape=(M,1)) #M time-constants
+            tau_min = 1/np.max(omega)
+            tau_max = 1/np.min(omega)
+            k_idx = np.arange(2, M, 1) #indexes of k to compute the time constants
+            self.tau[1:-1] = 10**(np.log10(tau_min) + ((k_idx-1)/(M-1))*np.log10(tau_max/tau_min)) #log distribution of the tau values
+            self.tau[0] = tau_min
+            self.tau[-1] = tau_max
+
+            #build the A matrix (Ax=b) based on the existing components
+            #by default: Ẑ = R_{ohm} + R_k + L + C
+            #if add_capacitor=False -> Ẑ = R_{ohm} + R_k + L
+            if add_capacitor:
+                A_re = np.zeros(shape=(len(omega), M+3))
+                A_imag = np.zeros(shape=(len(omega), M+3))
+            else:
+                A_re = np.zeros(shape=(len(omega), M+2))
+                A_imag = np.zeros(shape=(len(omega), M+2))
+
+            #add the components normalized by the absolute value
+            A_re[:,0] = 1/np.abs(z_meas) #R_ohm
+            A_imag[:,-2] = -1/(omega*np.abs(z_meas)) #inductance
+            A_imag[:,-1] = omega/np.abs(z_meas) #capacitance
+
+            #fill the contribution from each Rk component
+            omega = omega[:,np.newaxis] #add another dimension for vectorized processing
+            self.tau = self.tau[:,np.newaxis] #add another dimension for vectorized processing
+            z_meas = z_meas[:,np.newaxis] #add another dimension for vectorized processing
+            rk_den = 1/(1 + 1j*omega@self.tau.T) #RC element
+            A_re[:,1:len(self.tau)+1] = rk_den.real/np.abs(z_meas)
+            A_imag[:,1:len(self.tau)+1] = rk_den.imag/np.abs(z_meas)
+
+            #fit the parameters via pseudo-inverse x = A⁻1@b
+            pi_first_half = np.linalg.inv(A_re.T@A_re + A_imag.T@A_imag) #complex (A.T@A)⁻1
+            pi_second_half = A_re.T@(z_meas.real/np.abs(z_meas)) + A_imag.T@(z_meas.imag/np.abs(z_meas)) #complex A.T@b
+            params = pi_first_half@pi_second_half #(A.T@A)⁻1 @ (A.T@b)
+
+            #compute the overfitting criterion
+            if add_capacitor:
+                mu = self.compute_mu(params[1:-2])
+            else:
+                mu = self.compute_mu(params[1:-1])
+
+            #stop criteria
+            if mu <= c:
+                break
+
+            if M == max_iter:
+                break
+
+            return params, M
+
+    def generate_MRCircuit(self, freqs, params, tau):
+        '''
+        :param freqs: array with the swept frequencies
+        :param params: the fitted parameters from the linear kramers-kronig algorithm
+        :param tau: the distribution of time constants
+        :return: the real and imaginary parts of the fitted circuit (computed with the help of impedance.py circuit solver)
+        '''
+
+        #Resistive parameters
+        circuit_string = f"s([R({[params[0]]},{freqs.tolist()}),"
+        for Rk, tk in zip(params[1:], tau):
+            circuit_string += f"K({[Rk, tk]},{freqs.tolist()}),"
+
+        #Inductance and Capacitance parameters
+        circuit_string += f"L({[params[-1]]},{freqs.tolist()}),"
+        if params.size == (tau.size + 3):
+            circuit_string += f"C({[1 / params[-2]]},{freqs.tolist()}),"
+
+        circuit_string = circuit_string.strip(',')
+        circuit_string += '])'
+        z_hat = eval(circuit_string, script_to_overwrite_local_impedancedotpy_files.circuit_elements) #compute the complex impedance
+
+        return z_hat.real, z_hat.imag
+
+
+
+
+
 
 
 
