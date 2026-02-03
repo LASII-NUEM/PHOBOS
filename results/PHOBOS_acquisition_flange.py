@@ -331,18 +331,18 @@ fig, ax = plt.subplots(3,1, figsize = (15,10))
 fig.suptitle("Agg Cp vs. Agg Rp vs. Ice thickness")
 cap_labels = ['Avg. Cp norm. @ 10 kHz', 'Avg. Cp norm. @ 1 MHz']
 res_labels = ['Avg. Rp norm. @ 10 kHz', 'Avg. Rp norm. @ 1 MHz']
-linestyles = ["dashed", "solid"]
+marker = ["o", "v"]
 for freq_idx in range(0, phobos_obj.n_freqs):
     ax[0].plot(thickness_array,C_agg_clip[:,freq_idx],
              color="tab:blue",
-             linestyle="solid",marker ="o",
+             linestyle="solid",marker =marker[freq_idx],
              label=cap_labels[freq_idx])
 ax[0].set_ylabel('Capacitance [-]', color="tab:blue")
 ax[0].tick_params(axis='y', labelcolor="tab:blue")
 for freq_idx in range(0, phobos_obj.n_freqs):
     ax[1].plot(thickness_array,R_agg_clip[:,freq_idx],
              color="tab:red",
-             linestyle="solid",marker ="v",
+             linestyle="solid",marker =marker[freq_idx],
              label=res_labels[freq_idx])
 ax[1].set_ylabel('Resistance [--]', color="tab:red")
 ax[1].tick_params(axis='y', labelcolor="tab:red")
@@ -369,6 +369,6 @@ ax[2].tick_params(axis='y', labelcolor=colors_temp[0])
 lines, labels = ax[0].get_legend_handles_labels()
 lines2, labels2 = ax[1].get_legend_handles_labels()
 lines3, labels3 = ax[2].get_legend_handles_labels()
-ax[2].legend(lines + lines2+ lines3, labels + labels2 + labels3, loc='upper center', bbox_to_anchor=(0.5, -0.1),
+ax[2].legend(lines + lines2+ lines3, labels + labels2 + labels3, loc='upper center', bbox_to_anchor=(0.5, -0.3),
           fancybox=True, ncol=8)
 plt.show()
