@@ -5,19 +5,22 @@ matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 
 #PHOBOS spectroscopy acquisition
-
+spec_ice_obj = file_lcr.read('../data/testICE_12_12_25/cice.csv', n_samples=3, sweeptype="cell", acquisition_mode="spectrum", aggregate=np.mean)
+spec_h2o_obj = file_lcr.read('../data/testICE_12_12_25/c1.csv', n_samples=3, sweeptype="cell", acquisition_mode="spectrum", aggregate=np.mean)
 
 #Impedance fitting
-fit_obj = fitting_utils.EquivalentCircuit("Longo2020", spec_ice_obj, spec_ice_obj.freqs) #quivalent circuit object
-fit_params = fit_obj.fit_circuit(np.array([1.6, 1, 0.9, 1, 48, 1.5, 1, 2]),
-                                 np.array([1e3, 1e-7, 1e6, 1e-2, 1e2, 1e-1, 1, 1]),
-                                 method="BFGS")
+fit_obj = fitting_utils.EquivalentCircuit("Zurich2021", spec_ice_obj, spec_ice_obj.freqs) #quivalent circuit object
+initial_guess = np.array([1, 1, 1, 1, 1, 1])
+scaling_array = np.array([1e4, 1e-7, 1, 1e5, 1e3, 1e-8])
+fit_params = fit_obj.fit_circuit(initial_guess, scaling_array, method="BFGS")
 
 #plot
 fig, ax = plt.subplots()
 leg = []
+plt.scatter(fit_obj.z_meas_real, fit_obj.z_meas_imag, marker='o', color="tab:blue")
 ax.scatter(fit_obj.z_meas_real, fit_obj.z_meas_imag, marker='o', color="tab:blue")
 leg.append('ice measured')
+plt.plot(fit_params.opt_fit.real, -fit_params.opt_fit.imag, color="tab:orange")
 ax.plot(fit_params.opt_fit.real, -fit_params.opt_fit.imag, color="tab:orange")
 leg.append('Longo2020')
 x1, x2, y1, y2 = -1000, 20000, 1000, 12000
@@ -55,4 +58,3 @@ plt.ylabel("-∠Z")
 plt.xlabel("log(Frequency)")
 plt.legend(leg)
 plt.grid()
-plt.show()
