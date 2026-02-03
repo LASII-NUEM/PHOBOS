@@ -280,3 +280,108 @@ def Awayssa2025_partial(omega, R1, R2, C1, L1, C2, scaling, return_type="complex
         return Z
     else:
         raise ValueError(f'[Awayssa2025_partial] return_type = {return_type} not implemented! Try: ["real", "imag", "complex"]')
+
+def Yang2025(theta, args):
+    '''
+    :param theta: list with all the candidate values
+    :param args: list with all the arguments that won't be minimized
+    :return: impedance for the equivalent R - CPE||Zw - R||C circuit
+    '''
+
+    #expand thetas into the components with scaling
+    theta = np.array(theta)*args[1] #scaling
+    R1 = theta[0]
+    R2 = theta[1]
+    Q = theta[2]
+    n = theta[3]
+    Rd = theta[4]
+    taud = theta[5]
+    #Zws = theta[3]
+
+    #impedance computation
+    omega = args[0] #rad/s
+    Zws = (Rd*np.tanh((1j*omega*taud)**0.5))/((1j*omega*taud)** 0.5) #warburg short-finite impedance
+    CPE = Q*((1j*omega)**n) #constant phase element
+    Z_b2_d = 1 + R2*CPE #den. of the CPE||Zws block
+
+    return R1 + R2/Z_b2_d + Zws
+
+def Yang2025_partial(omega, R1, R2, Q, n, Rd, taud, scaling, return_type="complex"):
+
+    #expand thetas into the components with scaling
+    R1 = R1*scaling[0]
+    R2 = R2*scaling[1]
+    Q = Q*scaling[2]
+    n = n*scaling[3]
+    Rd = Rd*scaling[4]
+    taud = taud*scaling[5]
+
+    #impedance computation
+    Zws = (Rd*np.tanh((1j*omega*taud)**0.5))/((1j*omega*taud)**0.5) #warburg short-finite impedance
+    CPE = Q*((1j*omega)**n) #constant phase element
+    Z_b2_d = 1+R2*CPE #den. of the CPE||Zws block
+    Z = R1 + R2/Z_b2_d + Zws #complex impedance
+    Z = Z.astype("complex")
+
+    #handle return type
+    if return_type == "real":
+        return Z.real
+    elif return_type == "imag":
+        return Z.imag
+    elif return_type == "complex":
+        return Z
+    else:
+        raise ValueError(f'[Yang2025_partial] return_type = {return_type} not implemented! Try: ["real", "imag", "complex"]')
+
+def Zhang2024(theta, args):
+    '''
+    :param theta: list with all the candidate values
+    :param args: list with all the arguments that won't be minimized
+    :return: impedance for the equivalent R - CPE||Zw - R||C circuit
+    '''
+
+    #expand thetas into the components with scaling
+    theta = np.array(theta)*args[1] #scaling
+    Q = theta[0]
+    n = theta[1]
+    R1 = theta[2]
+    R2 = theta[3]
+    Rd = theta[4]
+    taud = theta[5]
+
+    #impedance computation
+    omega = args[0] #rad/s
+    Zws = (Rd*np.tanh((1j*omega*taud)**0.5))/((1j*omega*taud)** 0.5) #warburg short-finite impedance
+    CPE = Q*((1j*omega)**n) #constant phase element
+    Z_b1_n = R2*(1+CPE) #num. of the first block
+    Z_b1_d = 1 + CPE*(R1+R2) #den. of the first block
+
+    return Z_b1_n/Z_b1_d + Zws
+
+def Zhang2024_partial(omega, Q, n, R1, R2, Rd, taud, scaling, return_type="complex"):
+
+    #expand thetas into the components with scaling
+    Q = Q*scaling[0]
+    n = n*scaling[1]
+    R1 = R1*scaling[2]
+    R2 = R2*scaling[3]
+    Rd = Rd*scaling[4]
+    taud = taud*scaling[5]
+
+    #impedance computation
+    Zws = (Rd*np.tanh((1j*omega*taud)**0.5))/((1j*omega*taud)**0.5) #warburg short-finite impedance
+    CPE = Q*((1j*omega)**n) #constant phase element
+    Z_b1_n = R2*(1+CPE) #num. of the first block
+    Z_b1_d = 1+CPE*(R1+R2) #den. of the first block
+    Z = Z_b1_n/Z_b1_d + Zws #complex impedance
+    Z = Z.astype("complex")
+
+    #handle return type
+    if return_type == "real":
+        return Z.real
+    elif return_type == "imag":
+        return Z.imag
+    elif return_type == "complex":
+        return Z
+    else:
+        raise ValueError(f'[Zhang2024_partial] return_type = {return_type} not implemented! Try: ["real", "imag", "complex"]')
