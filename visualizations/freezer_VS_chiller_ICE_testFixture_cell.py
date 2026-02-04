@@ -1,5 +1,5 @@
 import numpy as np
-from framework import file_lcr, file_ia, visualization_utils, characterization_utils
+from framework import file_lcr, file_ia, visualization_utils, characterization_utils, fitting_utils
 import os
 import csv
 import matplotlib.pyplot as plt
@@ -48,8 +48,8 @@ LCR_F_Cice_obj = file_lcr.read(LCR_Cice_freezer, n_samples=3, sweeptype="cell", 
 # //----------------------------//
 #Impedance Analyzer load acquisition
 
-IA_freezer = '../data/freezerVSchiller/IA_F_20_01/Spectrum.xls'
 IA_chiller = '../data/freezerVSchiller/IA_C_29_01/Spectrum.xls'
+IA_freezer = '../data/freezerVSchiller/IA_F_03_02/Spectrum.xls'
 
 IA_F_obj = file_ia.read(IA_freezer)
 IA_F_C0_obj = IA_F_obj["c0"]
@@ -67,58 +67,96 @@ IA_C_Cice_obj= IA_C_obj["cice"]
 LCR_freqs = LCR_F_C0_obj.freqs
 IA_freqs = IA_F_C0_obj.freqs
 
+# //----------------------------//
+#   Lin KK test
+
+fit_obj = fitting_utils.LinearKramersKronig(LCR_C_Cice_obj, LCR_freqs, c=0.45, max_iter=100, add_capacitor=True)
+
+#plot
+fig, ax = plt.subplots()
+leg = []
+ax.scatter(fit_obj.z_meas_real, fit_obj.z_meas_imag, marker='o', color="tab:blue")
+leg.append('ice measured')
+ax.plot(fit_obj.z_hat.real, fit_obj.z_hat.imag, color="tab:orange")
+x1, x2, y1, y2 = -1000, 10000, 1000, 12000
+axins = ax.inset_axes([0.5, 0.18, 0.4, 0.4],
+                      xlim=(x1, x2), ylim=(y1, y2))
+axins.scatter(fit_obj.z_meas_real, fit_obj.z_meas_imag, marker='o', color="tab:blue")
+axins.plot(fit_obj.z_hat.real, fit_obj.z_hat.imag, color="tab:orange")
+ax.indicate_inset_zoom(axins, edgecolor="black", linewidth=1.5)
+leg.append(f'Kramers-Kronig: M = {fit_obj.fit_components}')
+plt.xlabel("Z'")
+plt.ylabel("Z''")
+plt.legend(leg)
+plt.grid()
+plt.show()
+
+plt.figure()
+leg = []
+plt.plot(LCR_freqs, fit_obj.fit_residues_real, '-o')
+leg.append('Δ_re')
+plt.plot(LCR_freqs, -fit_obj.fit_residues_imag, '-o')
+leg.append('Δ_imag')
+plt.ylabel('Δ [%]')
+plt.legend(leg)
+plt.xlabel("Frequency [Hz]")
+plt.xscale('log')
+plt.grid()
+plt.show()
+
+
 
 # //----------------------------//
 #         save Impedance
-IA_F_C1_z_real,   IA_F_C1_z_imag = characterization_utils.complex_impedance(IA_F_C1_obj,IA_freqs)
-IA_F_Cice_z_real,   IA_F_Cice_z_imag = characterization_utils.complex_impedance(IA_F_Cice_obj,IA_freqs)
-IA_C_C1_z_real,   IA_C_C1_z_imag = characterization_utils.complex_impedance(IA_C_C1_obj,IA_freqs)
-IA_C_Cice_z_real,   IA_C_Cice_z_imag = characterization_utils.complex_impedance(IA_C_Cice_obj,IA_freqs)
-
-LCR_F_C1_z_real,   LCR_F_C1_z_imag = characterization_utils.complex_impedance(LCR_F_C1_obj,LCR_freqs)
-LCR_F_Cice_z_real, LCR_F_Cice_z_imag = characterization_utils.complex_impedance(LCR_F_Cice_obj,LCR_freqs)
-LCR_C_C1_z_real,   LCR_C_C1_z_imag = characterization_utils.complex_impedance(LCR_C_C1_obj,LCR_freqs)
-LCR_C_Cice_z_real, LCR_C_Cice_z_imag = characterization_utils.complex_impedance(LCR_C_Cice_obj,LCR_freqs)
-
-folderZview_IA = '../data/freezerVSchiller/Zview'
-saveZfile(IA_freqs,IA_F_C1_z_real, -IA_F_C1_z_imag, filename = "IA_F_C1", folder = folderZview_IA)
-saveZfile(IA_freqs,IA_F_Cice_z_real, -IA_F_Cice_z_real, filename = "IA_F_Cice", folder = folderZview_IA)
-saveZfile(IA_freqs,IA_C_C1_z_real, -IA_C_C1_z_real, filename = "IA_C_C1", folder = folderZview_IA)
-saveZfile(IA_freqs,IA_C_Cice_z_real, -IA_C_Cice_z_real, filename = "IA_C_Cice", folder = folderZview_IA)
-
-folderZview_LCR = '../data/freezerVSchiller/Zview'
-saveZfile(LCR_freqs,LCR_F_C1_z_real, -LCR_F_C1_z_imag, filename = "LCR_F_C1", folder = folderZview_LCR)
-saveZfile(LCR_freqs,LCR_F_Cice_z_real, -LCR_F_Cice_z_real, filename = "LCR_F_Cice", folder = folderZview_LCR)
-saveZfile(LCR_freqs,LCR_C_C1_z_real, -LCR_C_C1_z_real, filename = "LCR_C_C1", folder = folderZview_LCR)
-saveZfile(LCR_freqs,LCR_C_Cice_z_real, -LCR_C_Cice_z_real, filename = "LCR_C_Cice", folder = folderZview_LCR)
+# IA_F_C1_z_real,   IA_F_C1_z_imag = characterization_utils.complex_impedance(IA_F_C1_obj,IA_freqs)
+# IA_F_Cice_z_real,   IA_F_Cice_z_imag = characterization_utils.complex_impedance(IA_F_Cice_obj,IA_freqs)
+# IA_C_C1_z_real,   IA_C_C1_z_imag = characterization_utils.complex_impedance(IA_C_C1_obj,IA_freqs)
+# IA_C_Cice_z_real,   IA_C_Cice_z_imag = characterization_utils.complex_impedance(IA_C_Cice_obj,IA_freqs)
+#
+# LCR_F_C1_z_real,   LCR_F_C1_z_imag = characterization_utils.complex_impedance(LCR_F_C1_obj,LCR_freqs)
+# LCR_F_Cice_z_real, LCR_F_Cice_z_imag = characterization_utils.complex_impedance(LCR_F_Cice_obj,LCR_freqs)
+# LCR_C_C1_z_real,   LCR_C_C1_z_imag = characterization_utils.complex_impedance(LCR_C_C1_obj,LCR_freqs)
+# LCR_C_Cice_z_real, LCR_C_Cice_z_imag = characterization_utils.complex_impedance(LCR_C_Cice_obj,LCR_freqs)
+# #
+# folderZview_IA = '../data/freezerVSchiller/Zview'
+# saveZfile(IA_freqs,IA_F_C1_z_real, -IA_F_C1_z_imag, filename = "IA_F_C1", folder = folderZview_IA)
+# saveZfile(IA_freqs,IA_F_Cice_z_real, -IA_F_Cice_z_real, filename = "IA_F_Cice", folder = folderZview_IA)
+# saveZfile(IA_freqs,IA_C_C1_z_real, -IA_C_C1_z_real, filename = "IA_C_C1", folder = folderZview_IA)
+# saveZfile(IA_freqs,IA_C_Cice_z_real, -IA_C_Cice_z_real, filename = "IA_C_Cice", folder = folderZview_IA)
+#
+# folderZview_LCR = '../data/freezerVSchiller/Zview'
+# saveZfile(LCR_freqs,LCR_F_C1_z_real, -LCR_F_C1_z_imag, filename = "LCR_F_C1", folder = folderZview_LCR)
+# saveZfile(LCR_freqs,LCR_F_Cice_z_real, -LCR_F_Cice_z_real, filename = "LCR_F_Cice", folder = folderZview_LCR)
+# saveZfile(LCR_freqs,LCR_C_C1_z_real, -LCR_C_C1_z_real, filename = "LCR_C_C1", folder = folderZview_LCR)
+# saveZfile(LCR_freqs,LCR_C_Cice_z_real, -LCR_C_Cice_z_real, filename = "LCR_C_Cice", folder = folderZview_LCR)
 
 # //----------------------------//
 #         Visualization
 
 # IA_idx = np.argmin(np.abs(IA_freqs-100))
-# # IA_c_C1_z_real = IA_C_C1_z_real[IA_idx:]'''
-# # IA_c_C1_z_imag = IA_C_C1_z_imag[IA_idx:]
-# #
-# # plt.plot(IA_c_C1_z_real, IA_c_C1_z_imag)
-# # plt.grid()
-# # plt.show()
+# IA_c_C1_z_real = IA_F_C1_z_real[IA_idx:]
+# IA_c_C1_z_imag = IA_F_C1_z_imag[IA_idx:]
+#
+# plt.plot(IA_c_C1_z_real, IA_c_C1_z_imag)
+# plt.grid()
+# plt.show()
 
-visualization_utils.nyquist(IA_C_C1_obj, IA_freqs, labels=["Water"], title="IA_C_C1")
-visualization_utils.nyquist(IA_C_Cice_obj, IA_freqs, labels=["ICE"], title="IA_C_Cice")
-visualization_utils.nyquist(IA_F_C1_obj, IA_freqs, labels=["Water"],  title="IA_F_C1")
-visualization_utils.nyquist(IA_F_Cice_obj, IA_freqs, labels=["ICE"],  title="IA_F_Cice")
+# visualization_utils.nyquist(IA_C_C1_obj, IA_freqs, labels=["Water"], title="IA_C_C1")
+# visualization_utils.nyquist(IA_C_Cice_obj, IA_freqs, labels=["ICE"], title="IA_C_Cice")
+# visualization_utils.nyquist(IA_F_C1_obj, IA_freqs, labels=["Water"],  title="IA_F_C1")
+# visualization_utils.nyquist(IA_F_Cice_obj, IA_freqs, labels=["ICE"],  title="IA_F_Cice")
 
-visualization_utils.nyquist(LCR_C_C1_obj, LCR_freqs, labels=["Water"], title="LCR_C_C1")
-visualization_utils.nyquist(LCR_C_Cice_obj, LCR_freqs, labels=["ICE"], title="LCR_C_Cice")
-visualization_utils.nyquist(LCR_F_C1_obj, LCR_freqs, labels=["Water"], title="LCR_F_C1")
-visualization_utils.nyquist(LCR_F_Cice_obj, LCR_freqs, labels=["ICE"], title="LCR_F_Cice")
+# visualization_utils.nyquist(LCR_C_C1_obj, LCR_freqs, labels=["Water"], title="LCR_C_C1")
+# visualization_utils.nyquist(LCR_C_Cice_obj, LCR_freqs, labels=["ICE"], title="LCR_C_Cice")
+# visualization_utils.nyquist(LCR_F_C1_obj, LCR_freqs, labels=["Water"], title="LCR_F_C1")
+# visualization_utils.nyquist(LCR_F_Cice_obj, LCR_freqs, labels=["ICE"], title="LCR_F_Cice")
 
 
 plotdict = {}
-plotdict["data_IA_F"] = [IA_F_C1_obj, IA_F_Cice_obj]
-plotdict["data_IA_C"] = [IA_C_C1_obj, IA_C_Cice_obj]
-plotdict["data_LCR_F"] = [LCR_F_C1_obj, LCR_F_Cice_obj]
-plotdict["data_LCR_C"] = [LCR_C_C1_obj, LCR_C_Cice_obj]
+# plotdict["data_IA_F"] = [IA_F_C1_obj, IA_F_Cice_obj]
+# plotdict["data_IA_C"] = [IA_C_C1_obj, IA_C_Cice_obj]
+# plotdict["data_LCR_F"] = [LCR_F_C1_obj, LCR_F_Cice_obj]
+# plotdict["data_LCR_C"] = [LCR_C_C1_obj, LCR_C_Cice_obj]
 
 for key, value in plotdict.items():
 
