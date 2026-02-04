@@ -14,7 +14,6 @@ function_handlers = {
     "hong2021": {"n_params": 7, "function_ptr": equivalent_circuits.Hong2021, "partial_function_ptr": equivalent_circuits.Hong2021_partial, "bounds": [(0,np.inf), (0,np.inf), (0,1), (0,np.inf), (0,np.inf), (0,1), (0,np.inf)]},
     "yang2025": {"n_params": 6, "function_ptr": equivalent_circuits.Yang2025, "partial_function_ptr": equivalent_circuits.Yang2025_partial, "bounds": [(0, np.inf), (0, np.inf), (0, np.inf), (0, 1), (0, np.inf), (0, np.inf)]},
     "zhang2024": {"n_params": 6, "function_ptr": equivalent_circuits.Zhang2024, "partial_function_ptr": equivalent_circuits.Zhang2024_partial, "bounds": [(0, np.inf), (0, 1), (0, np.inf), (0, np.inf), (0, np.inf), (0, np.inf)]}
-
 }
 
 class OptimizerResults:
@@ -197,6 +196,7 @@ class LinearKramersKronig:
         self.z_meas_real = z_meas_real
         self.z_meas_imag = z_meas_imag
         self.z_meas = z_meas_real - 1j*z_meas_imag #complex impedance
+        self.z_meas = self.z_meas.astype("complex")
 
         #fit routine
         self.tau = None #distribution of the time constants
@@ -204,7 +204,8 @@ class LinearKramersKronig:
         self.fit_params, self.fit_components = self.validate_data(self.z_meas, self.freqs, c=c, max_iter=max_iter, add_capacitor=add_capacitor) #run the LKK algorithm
         self.t_elapsed = time.time() - t_init #store the computation time of the algorithm
         self.z_hat_real, self.z_hat_imag = self.generate_MRCircuit(self.freqs, self.fit_params, self.tau) #compute the complex impedance for the fitted value
-        self.z_hat = self.z_hat_real + 1j*self.z_hat_imag
+        self.z_hat = self.z_hat_real - 1j*self.z_hat_imag #complex impedance
+        self.z_hat = self.z_hat.astype("complex")
         self.fit_residues_real, self.fit_residues_imag = self.compute_residues(self.z_meas, self. z_hat)
 
     def compute_residues(self, z, z_hat):
@@ -247,7 +248,7 @@ class LinearKramersKronig:
             M += 1 #update the M RC components number
 
             #distribution of time constants
-            self.tau = np.zeros(shape=(M,1)) #M time-constants
+            self.tau = np.zeros(shape=(M,)) #M time-constants
             tau_min = 1/np.max(omega)
             tau_max = 1/np.min(omega)
             k_idx = np.arange(2, M, 1) #indexes of k to compute the time constants
@@ -271,14 +272,11 @@ class LinearKramersKronig:
             A_imag[:,-1] = omega/np.abs(z_meas) #capacitance
 
             #fill the contribution from each Rk component
-            omega = omega[:,np.newaxis] #add another dimension for vectorized processing
-            self.tau = self.tau[:,np.newaxis] #add another dimension for vectorized processing
-            z_meas = z_meas[:,np.newaxis] #add another dimension for vectorized processing
-            rk_den = 1/(1 + 1j*omega@self.tau.T) #RC element
-            A_re[:,1:len(self.tau)+1] = rk_den.real/np.abs(z_meas)
-            A_imag[:,1:len(self.tau)+1] = rk_den.imag/np.abs(z_meas)
+            rk_den = 1/(1 + 1j*omega[:,np.newaxis]@self.tau[:,np.newaxis].T) #RC element
+            A_re[:,1:len(self.tau)+1] = rk_den.real/np.abs(z_meas[:,np.newaxis])
+            A_imag[:,1:len(self.tau)+1] = rk_den.imag/np.abs(z_meas[:,np.newaxis])
 
-            #fit the parameters via pseudo-inverse x = A⁻1@b
+            #fit the parameters via pseudo-inverse: x = A⁻1@b
             pi_first_half = np.linalg.inv(A_re.T@A_re + A_imag.T@A_imag) #complex (A.T@A)⁻1
             pi_second_half = A_re.T@(z_meas.real/np.abs(z_meas)) + A_imag.T@(z_meas.imag/np.abs(z_meas)) #complex A.T@b
             params = pi_first_half@pi_second_half #(A.T@A)⁻1 @ (A.T@b)
@@ -296,7 +294,7 @@ class LinearKramersKronig:
             if M == max_iter:
                 break
 
-            return params, M
+        return params, M
 
     def generate_MRCircuit(self, freqs, params, tau):
         '''
@@ -321,13 +319,3 @@ class LinearKramersKronig:
         z_hat = eval(circuit_string, script_to_overwrite_local_impedancedotpy_files.circuit_elements) #compute the complex impedance
 
         return z_hat.real, z_hat.imag
-
-
-
-
-
-
-
-
-
-
