@@ -10,11 +10,12 @@ def dielectric_params_generic(data_medium:data_types.SpectroscopyData, data_air:
     '''
 
     #validate data_medium
-    if type(data_medium) != data_types.SpectroscopyData:
+    expected_types = [data_types.SpectroscopyData, data_types.CommercialCellData]
+    if type(data_medium) not in expected_types:
         raise TypeError(f'[dielectric_params_generic] "data_medium" must be a SpectrumData structure! Curr. type = {type(data_medium)}')
 
     #validate data_air
-    if type(data_air) != data_types.SpectroscopyData:
+    if type(data_air) not in expected_types:
         raise TypeError(f'[dielectric_params_generic] "data_air" must be a SpectrumData structure! Curr. type = {type(data_air)}')
 
     #validate freqs
@@ -39,12 +40,13 @@ def dielectric_params_corrected(data_medium:data_types.SpectroscopyData, data_ai
     '''
 
     #validate data_medium
-    if type(data_medium) != data_types.SpectroscopyData:
-        raise TypeError(
-            f'[dielectric_params_corrected] "data_medium" must be a SpectrumData structure! Curr. type = {type(data_medium)}')
+    expected_types = [data_types.SpectroscopyData, data_types.CommercialCellData]
+    if type(data_medium) not in expected_types:
+        raise TypeError(f'[dielectric_params_corrected] "data_medium" must be a SpectrumData structure! Curr. type = {type(data_medium)}')
 
     #validate data_air
-    if type(data_air) != data_types.SpectroscopyData:
+    expected_types = [data_types.SpectroscopyData, data_types.CommercialCellData]
+    if type(data_air) not in expected_types:
         raise TypeError(
             f'[dielectric_params_corrected] "data_air" must be a SpectrumData structure! Curr. type = {type(data_air)}')
 
@@ -105,7 +107,8 @@ def complex_impedance(data_medium:data_types.SpectroscopyData, freqs:np.ndarray)
     '''
 
     #validate data_medium
-    if type(data_medium) != data_types.SpectroscopyData:
+    expected_types = [data_types.SpectroscopyData, data_types.CommercialCellData]
+    if type(data_medium) not in expected_types:
         raise TypeError(f'[dielectric_params_generic] "data_medium" must be a SpectrumData structure! Curr. type = {type(data_medium)}')
 
     #validate freqs
@@ -113,7 +116,7 @@ def complex_impedance(data_medium:data_types.SpectroscopyData, freqs:np.ndarray)
         raise TypeError(f'[dielectric_params_generic] "freqs" must be a Numpy Array! Curr. type = {type(freqs)}')
 
     omegas = 2*np.pi*freqs #Hz to rad/s
-    if data_medium.Rp.ndim==1:
+    if (data_medium.Rp.ndim==1) | (type(data_medium)==data_types.CommercialCellData):
         z_line_medium = data_medium.Rp/(1+(omegas*data_medium.Cp*data_medium.Rp)**2) #real part of the impedance
         z_2line_medium = (omegas*data_medium.Cp*(data_medium.Rp**2))/(1+(omegas*data_medium.Cp*data_medium.Rp)**2) #imaginary part of the impedance
     elif data_medium.Rp.ndim>1:
@@ -131,11 +134,13 @@ def complex_conductivity(data_medium:data_types.SpectroscopyData, data_air:data_
     '''
 
     #validate data_medium
-    if type(data_medium) != data_types.SpectroscopyData:
+    expected_types = [data_types.SpectroscopyData, data_types.CommercialCellData]
+    if type(data_medium) not in expected_types:
         raise TypeError(f'[dielectric_params_generic] "data_medium" must be a SpectrumData structure! Curr. type = {type(data_medium)}')
 
     #validate data_air
-    if type(data_air) != data_types.SpectroscopyData:
+    expected_types = [data_types.SpectroscopyData, data_types.CommercialCellData]
+    if type(data_air) not in expected_types:
         raise TypeError(f'[dielectric_params_generic] "data_air" must be a SpectrumData structure! Curr. type = {type(data_air)}')
 
     #validate freqs
@@ -145,7 +150,7 @@ def complex_conductivity(data_medium:data_types.SpectroscopyData, data_air:data_
     omegas = 2*np.pi*freqs #Hz to rad/s
     eps0 = 8.854e-12 #permittivty at vacuum
     eps_real, eps_imag = eps_func(data_medium, data_air, freqs) #compute the complex permittivity
-    if data_medium.Rp.ndim==1:
+    if (data_medium.Rp.ndim==1) | (type(data_medium)==data_types.CommercialCellData):
         sigma_line_medium = omegas*eps0*eps_imag #real conductivity
         sigma_2line_medium = omegas*eps0*eps_real #real conductivity
     elif data_medium.Rp.ndim>1:
@@ -163,11 +168,13 @@ def dielectric_modulus(data_medium:data_types.SpectroscopyData, data_air:data_ty
     '''
 
     #validate data_medium
-    if type(data_medium) != data_types.SpectroscopyData:
+    expected_types = [data_types.SpectroscopyData, data_types.CommercialCellData]
+    if type(data_medium) not in expected_types:
         raise TypeError(f'[dielectric_params_generic] "data_medium" must be a SpectrumData structure! Curr. type = {type(data_medium)}')
 
     #validate data_air
-    if type(data_air) != data_types.SpectroscopyData:
+    expected_types = [data_types.SpectroscopyData, data_types.CommercialCellData]
+    if type(data_air) not in expected_types:
         raise TypeError(f'[dielectric_params_generic] "data_air" must be a SpectrumData structure! Curr. type = {type(data_air)}')
 
     #validate freqs
