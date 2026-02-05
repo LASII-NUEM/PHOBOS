@@ -160,8 +160,8 @@ class EquivalentCircuit:
             circuit_impedance_real = partial(self.circuit_impedance, scaling=scaling_array, return_type="real") #set scaling and return_type to static inputs
             circuit_impedance_imag = partial(self.circuit_impedance, scaling=scaling_array, return_type="imag") #set scaling and return_type to static inputs
             t_init = time.time()
-            fit_params_real, fit_cov_real = curve_fit(circuit_impedance_real, omega, self.z_meas_real, p0=initial_guess, bounds=bounds)
-            fit_params_imag, fit_cov_imag = curve_fit(circuit_impedance_imag, omega, self.z_meas_imag, p0=initial_guess, bounds=bounds)
+            fit_params_real, fit_cov_real = curve_fit(circuit_impedance_real, omega, self.z_meas_real, p0=initial_guess, bounds=bounds, maxfev=10000) #hacky-fix to attempt never running out of allowed iterations
+            fit_params_imag, fit_cov_imag = curve_fit(circuit_impedance_imag, omega, self.z_meas_imag, p0=initial_guess, bounds=bounds, maxfev=10000) #hacky-fix to attempt never running out of allowed iterations
             t_elapsed = time.time() - t_init
             opt_fit_real = function_handlers[self.topology]["function_ptr"](fit_params_real, [omega, scaling_array]) #compute the circuit real output for the optimal values
             opt_fit_imag = function_handlers[self.topology]["function_ptr"](fit_params_imag, [omega, scaling_array]) #compute the circuit imaginary output for the optimal values
