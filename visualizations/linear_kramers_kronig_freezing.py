@@ -36,7 +36,7 @@ nyquist_meas = ax.plot(z_meas_real[0,0,:], z_meas_imag[0,0,:], color="tab:blue",
 linKK_meas = ax.plot(z_hat_real[0,0,:], -z_hat_imag[0,0,:], color="tab:orange", linestyle="dotted", label="linear kramers-kronig")[0]
 ax.legend()
 ax.grid()
-ax.title.set_text(f"timestamp = {spec_ice_obj.human_timestamps[0]}")
+ax.title.set_text(f"{spec_ice_obj.human_timestamps[0]}")
 ax.set_xlabel("Z'")
 ax.set_ylabel("Z''")
 
@@ -49,7 +49,7 @@ def update_nyquist(frame):
     nyquist_meas.set_ydata(imag_part)
     linKK_meas.set_xdata(z_hat_real[frame,0,:])
     linKK_meas.set_ydata(-z_hat_imag[frame,0,:])
-    ax.title.set_text(f"timestamp = {spec_ice_obj.human_timestamps[frame]} \n"
+    ax.title.set_text(f"{spec_ice_obj.human_timestamps[frame]} \n"
                       f"M = {M[frame]} \n"
                       f"x² = {chi_sqr[frame]}")
     plt.xlim([np.min(real_part)-limits, np.max(real_part)+limits])
@@ -57,5 +57,5 @@ def update_nyquist(frame):
 
     return nyquist_meas
 
-animate = animation.FuncAnimation(fig=fig, func=update_nyquist, frames=len(z_meas_real)-1, interval=300)
+animate = animation.FuncAnimation(fig=fig, func=update_nyquist, frames=len(z_hat_real)-1, interval=300)
 plt.show()

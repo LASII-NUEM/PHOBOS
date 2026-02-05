@@ -5,16 +5,16 @@ matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 
 #PHOBOS spectroscopy acquisition
-#spec_ice_obj = file_lcr.read('../data/testICE_30_01_26/cice.csv', n_samples=3, sweeptype="cell", acquisition_mode="spectrum", aggregate=np.mean)
+spec_ice_obj = file_lcr.read('../data/testICE_30_01_26/cice.csv', n_samples=3, sweeptype="cell", acquisition_mode="spectrum", aggregate=np.mean)
+fit_obj = fitting_utils.LinearKramersKronig(spec_ice_obj, spec_ice_obj.freqs, c=0.5, max_iter=100, add_capacitor=True, verbose=True)
 
 #LCR free-run acquisition
-spec_ice_obj = file_lcr.read('../data/testICE_30_01_26/c_test.csv', n_samples=1, sweeptype="cell", acquisition_mode="freq", aggregate=np.mean)
-z_meas_real, z_meas_imag = characterization_utils.complex_impedance(spec_ice_obj, spec_ice_obj.freqs)
-z_meas = z_meas_real-1j*z_meas_imag
-freqs_mask = spec_ice_obj.freqs > 100
-spec_ice_obj.freqs = spec_ice_obj.freqs[freqs_mask]
-fit_obj = fitting_utils.LinearKramersKronig([z_meas_real[10,0,freqs_mask], z_meas_imag[10,0,freqs_mask]], spec_ice_obj.freqs, c=0.5, max_iter=100, add_capacitor=True)
-print(f'χ² = {fit_obj.chi_square}')
+# spec_ice_obj = file_lcr.read('../data/testICE_30_01_26/c_test.csv', n_samples=1, sweeptype="cell", acquisition_mode="freq", aggregate=np.mean)
+# z_meas_real, z_meas_imag = characterization_utils.complex_impedance(spec_ice_obj, spec_ice_obj.freqs)
+# z_meas = z_meas_real-1j*z_meas_imag
+# freqs_mask = spec_ice_obj.freqs > 100
+# spec_ice_obj.freqs = spec_ice_obj.freqs[freqs_mask]
+# fit_obj = fitting_utils.LinearKramersKronig([z_meas_real[10,0,freqs_mask], z_meas_imag[10,0,freqs_mask]], spec_ice_obj.freqs, c=0.5, max_iter=100, add_capacitor=True, verbose=True)
 
 #plot
 fig, ax = plt.subplots()

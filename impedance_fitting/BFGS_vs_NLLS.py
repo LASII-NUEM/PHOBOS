@@ -9,16 +9,16 @@ spec_ice_obj = file_lcr.read('../data/testICE_12_12_25/cice.csv', n_samples=3, s
 spec_h2o_obj = file_lcr.read('../data/testICE_12_12_25/c1.csv', n_samples=3, sweeptype="cell", acquisition_mode="spectrum", aggregate=np.mean)
 
 #minimizer arguments
-init_guess_BFGS = np.array([1.6, 1, 0.9, 1, 48, 1.5, 1, 2])
-scaling_array_BFGS = np.array([1e3, 1e-7, 1e6, 1e-2, 1e2, 1e-1, 1, 1])
+init_guess_BFGS = np.array([1, 1, 1, 1, 1, 1, 1, 1])
+scaling_array_BFGS = np.array([1e3, 1e-7, 1e6, 1e-2, 1e3, 1e-1, 1, 1])
 
-init_guess_NLLS = np.array([1.6, 1, 0.9, 1, 48, 1.5, 1, 2])
-scaling_array_NLLS = np.array([1e3, 1e-7, 1e6, 1e-2, 1e2, 1e-1, 1, 1])
+init_guess_NLLS = np.array([1, 1, 1, 1, 1, 1, 1, 1])
+scaling_array_NLLS = np.array([1e3, 1e-7, 1e6, 1e-2, 1e3, 1e-1, 1, 1])
 
 #Impedance fitting w/ BFGS
 fit_obj = fitting_utils.EquivalentCircuit("Longo2020", spec_ice_obj, spec_ice_obj.freqs) #quivalent circuit object
-fit_params_BFGS = fit_obj.fit_circuit(init_guess_BFGS, scaling_array_BFGS, method="BFGS")
-fit_params_NLLS = fit_obj.fit_circuit(init_guess_NLLS, scaling_array_NLLS, method="NLLS")
+fit_params_BFGS = fit_obj.fit_circuit(init_guess_BFGS, scaling_array_BFGS, method="BFGS", verbose=True)
+fit_params_NLLS = fit_obj.fit_circuit(init_guess_NLLS, scaling_array_NLLS, method="NLLS", verbose=True)
 
 #plot
 fig, ax = plt.subplots()
