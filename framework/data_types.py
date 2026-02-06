@@ -338,6 +338,8 @@ class PHOBOSData:
         electrode_data = file_lcr.read(filename_electrode, n_samples, sweeptype=sweeptype, acquisition_mode=acquisition_mode, aggregate=aggregate, timezone=timezone)
         self.Cp = electrode_data.Cp #capacitance
         self.Rp = electrode_data.Rp #resistance
+        self.Cp_agg = np.mean(electrode_data.Cp, axis=1)
+        self.Rp_agg = np.mean(electrode_data.Rp, axis=1)
         self.freqs = electrode_data.freqs #swept frequencies
         self.n_freqs = electrode_data.n_freqs #number of swept frequencies
         self.electrode_human_timestamps = electrode_data.human_timestamps #human timestamps
