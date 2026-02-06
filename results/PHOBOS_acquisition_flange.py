@@ -1,7 +1,7 @@
 import numpy as np
 from framework import data_types
 import matplotlib
-matplotlib.use('TkAgg')
+# matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 
@@ -56,11 +56,11 @@ phobos_obj = data_types.PHOBOSData(filename_flange, filename_temperature=filenam
 # fig, ax1 = plt.subplots()
 # elec_colors = ["green", "blue"]
 # elec_labels = ['Avg. Rp norm. @ 10 kHz', 'Avg. Rp norm. @ 1 MHz']
-# for freq_idx in range(0, phobos_obj.n_freqs):
-#     ax1.plot(phobos_obj.electrode_human_timestamps, phobos_obj.agg_Rp_norm[:, freq_idx],
-#              color=elec_colors[freq_idx],
-#              linestyle='dashed',
-#              label=elec_labels[freq_idx])
+# # for freq_idx in range(0, phobos_obj.n_freqs):
+# ax1.plot(phobos_obj.electrode_human_timestamps, phobos_obj.Rp[:,0, 1],
+#          color=elec_colors[1],
+#          linestyle='dashed',
+#          label=elec_labels[1])
 # ax1.set_xlim([phobos_obj.electrode_human_timestamps[1], phobos_obj.electrode_human_timestamps[-3]])
 # ax1.xaxis.set_major_locator(mdates.AutoDateLocator())
 # ax1.xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
@@ -212,14 +212,20 @@ right = ts_s[pos]
 idx_s = np.where((ft - left) <= (right - ft), pos - 1, pos)
 idx_closest = order[idx_s]
 
-C = phobos_obj.Cp_norm
-C_clip = C[idx_closest]
-C_agg = phobos_obj.agg_Cp_norm
+# C = phobos_obj.Cp_norm
+# C_clip = C[idx_closest]
+# C_agg_norm = phobos_obj.agg_Cp_norm
+# C_agg_norm_clip = C_agg_norm[idx_closest]
+
+C_agg = phobos_obj.Cp_agg
 C_agg_clip = C_agg[idx_closest]
 
-R = phobos_obj.Rp_norm
-R_clip = R[idx_closest]
-R_agg = phobos_obj.agg_Rp_norm
+# R = phobos_obj.Rp_norm
+# R_clip = R[idx_closest]
+# R_agg_norm = phobos_obj.agg_Rp_norm
+# R_agg_norm_clip = R_agg_norm[idx_closest]
+
+R_agg = phobos_obj.Rp_agg
 R_agg_clip = R_agg[idx_closest]
 
 #idx temperature
@@ -327,48 +333,109 @@ thermo_clip = thermo[idx_closest_t]
 #           fancybox=True, ncol=8)
 # plt.show()
 
-fig, ax = plt.subplots(3,1, figsize = (15,10))
+# fig, ax = plt.subplots(3,1, figsize = (15,10))
+# fig.suptitle("Agg Cp vs. Agg Rp vs. Ice thickness")
+# cap_labels = ['Avg. Cp norm. @ 10 kHz', 'Avg. Cp norm. @ 1 MHz']
+# res_labels = ['Avg. Rp norm. @ 10 kHz', 'Avg. Rp norm. @ 1 MHz']
+# marker = ["o", "v"]
+# for freq_idx in range(0, phobos_obj.n_freqs):
+#     ax[0].plot(thickness_array,C_agg_clip[:,freq_idx],
+#              color="tab:blue",
+#              linestyle="solid",marker =marker[freq_idx],
+#              label=cap_labels[freq_idx])
+# ax[0].set_ylabel('Capacitance [-]', color="tab:blue")
+# ax[0].tick_params(axis='y', labelcolor="tab:blue")
+# for freq_idx in range(0, phobos_obj.n_freqs):
+#     ax[1].plot(thickness_array,R_agg_clip[:,freq_idx],
+#              color="tab:red",
+#              linestyle="solid",marker =marker[freq_idx],
+#              label=res_labels[freq_idx])
+# ax[1].set_ylabel('Resistance [--]', color="tab:red")
+# ax[1].tick_params(axis='y', labelcolor="tab:red")
+# ax[2].set_xlabel('Ice thickness [mm]')
+# ax[0].grid()
+# ax[1].grid()
+# ax[2].grid()
+#
+# colors_temp = [(0.85, 0.45, 0.20),
+#                (0.90, 0.55, 0.25),
+#                (0.95, 0.65, 0.35),
+#                (0.85, 0.60, 0.40)] #orange-like tones
+# linestyles_temp = ["-", "--", ":", "-."]
+# labels_temp = ['T1', 'T2', 'T3', 'T4']
+# for thermo_idx in range(0,phobos_obj.n_thermosensors):
+#     ax[2].plot(thickness_array, thermo_clip[:,thermo_idx],
+#              color=colors_temp[thermo_idx],
+#              linestyle=linestyles_temp[thermo_idx], marker = "x",
+#              linewidth=1,
+#              label=labels_temp[thermo_idx])
+# ax[2].set_ylabel('Temperature [°C]', color=colors_temp[0])
+# ax[2].tick_params(axis='y', labelcolor=colors_temp[0])
+#
+# lines, labels = ax[0].get_legend_handles_labels()
+# lines2, labels2 = ax[1].get_legend_handles_labels()
+# lines3, labels3 = ax[2].get_legend_handles_labels()
+# ax[2].legend(lines + lines2+ lines3, labels + labels2 + labels3, loc='upper center', bbox_to_anchor=(0.5, -0.3),
+#           fancybox=True, ncol=8)
+# plt.show()
+
+fig, ax = plt.subplots(3, 1, figsize=(15, 10), sharex=True)
 fig.suptitle("Agg Cp vs. Agg Rp vs. Ice thickness")
+
 cap_labels = ['Avg. Cp norm. @ 10 kHz', 'Avg. Cp norm. @ 1 MHz']
 res_labels = ['Avg. Rp norm. @ 10 kHz', 'Avg. Rp norm. @ 1 MHz']
 marker = ["o", "v"]
-for freq_idx in range(0, phobos_obj.n_freqs):
-    ax[0].plot(thickness_array,C_agg_clip[:,freq_idx],
-             color="tab:blue",
-             linestyle="solid",marker =marker[freq_idx],
-             label=cap_labels[freq_idx])
-ax[0].set_ylabel('Capacitance [-]', color="tab:blue")
-ax[0].tick_params(axis='y', labelcolor="tab:blue")
-for freq_idx in range(0, phobos_obj.n_freqs):
-    ax[1].plot(thickness_array,R_agg_clip[:,freq_idx],
-             color="tab:red",
-             linestyle="solid",marker =marker[freq_idx],
-             label=res_labels[freq_idx])
-ax[1].set_ylabel('Resistance [--]', color="tab:red")
-ax[1].tick_params(axis='y', labelcolor="tab:red")
-ax[2].set_xlabel('Ice thickness [mm]')
-ax[0].grid()
-ax[1].grid()
-ax[2].grid()
 
+# --- Cp row (ax[0]) ---
+ax0r = ax[0].twinx()
+ax[0].plot(thickness_array, C_agg_clip[:, 0], linestyle="solid", color='tab:blue',marker = marker[0],
+           label=cap_labels[0])
+ax0r.plot(thickness_array, C_agg_clip[:, 1], linestyle="dotted", color='tab:blue',marker = marker[0],
+          label=cap_labels[1])
+
+ax[0].set_ylabel('Capacitance [F] @ 10 kHz')
+ax0r.set_ylabel('Capacitance [F] @ 1 MHz')
+ax[0].grid(True)
+
+# --- Rp row (ax[1]) ---
+ax1r = ax[1].twinx()
+ax[1].plot(thickness_array, R_agg_clip[:, 0], linestyle="solid",color='tab:red',marker = marker[1],
+           label=res_labels[0])
+ax1r.plot(thickness_array, -R_agg_clip[:, 1], linestyle="dotted", color='tab:red',marker = marker[1],
+          label=res_labels[1])
+
+ax[1].set_ylabel(r'Resistance [$\Omega$] @ 10 kHz')
+ax1r.set_ylabel(r'Resistance [$\Omega$] @ 1 MHz')
+ax[1].grid(True)
+
+# --- Temperature row (ax[2]) ---
 colors_temp = [(0.85, 0.45, 0.20),
                (0.90, 0.55, 0.25),
                (0.95, 0.65, 0.35),
-               (0.85, 0.60, 0.40)] #orange-like tones
+               (0.85, 0.60, 0.40)]
 linestyles_temp = ["-", "--", ":", "-."]
 labels_temp = ['T1', 'T2', 'T3', 'T4']
-for thermo_idx in range(0,phobos_obj.n_thermosensors):
-    ax[2].plot(thickness_array, thermo_clip[:,thermo_idx],
-             color=colors_temp[thermo_idx],
-             linestyle=linestyles_temp[thermo_idx], marker = "x",
-             linewidth=1,
-             label=labels_temp[thermo_idx])
-ax[2].set_ylabel('Temperature [°C]', color=colors_temp[0])
-ax[2].tick_params(axis='y', labelcolor=colors_temp[0])
 
-lines, labels = ax[0].get_legend_handles_labels()
-lines2, labels2 = ax[1].get_legend_handles_labels()
-lines3, labels3 = ax[2].get_legend_handles_labels()
-ax[2].legend(lines + lines2+ lines3, labels + labels2 + labels3, loc='upper center', bbox_to_anchor=(0.5, -0.3),
-          fancybox=True, ncol=8)
+for thermo_idx in range(phobos_obj.n_thermosensors):
+    ax[2].plot(thickness_array, thermo_clip[:, thermo_idx],
+               color=colors_temp[thermo_idx],
+               linestyle=linestyles_temp[thermo_idx],
+               marker="x", linewidth=1,
+               label=labels_temp[thermo_idx])
+
+ax[2].set_ylabel('Temperature [°C]')
+ax[2].set_xlabel('Ice thickness [mm]')
+ax[2].grid(True)
+
+# --- One legend for everything (collect handles from all axes) ---
+handles, labels = [], []
+for a in (ax[0], ax0r, ax[1], ax1r, ax[2]):
+    h, l = a.get_legend_handles_labels()
+    handles += h
+    labels += l
+
+fig.legend(handles, labels, loc='lower center', bbox_to_anchor=(0.5, -0.02),
+           fancybox=True, ncol=4)
+
+plt.tight_layout()
 plt.show()
