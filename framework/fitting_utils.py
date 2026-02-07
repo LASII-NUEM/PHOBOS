@@ -158,25 +158,26 @@ class EquivalentCircuit:
 
             #handle the real and imaginary parts separately
             circuit_impedance_real = partial(self.circuit_impedance, scaling=scaling_array, return_type="real") #set scaling and return_type to static inputs
-            circuit_impedance_imag = partial(self.circuit_impedance, scaling=scaling_array, return_type="imag") #set scaling and return_type to static inputs
             t_init = time.time()
-            fit_params_real, fit_cov_real = curve_fit(circuit_impedance_real, omega, self.z_meas_real, p0=initial_guess, bounds=bounds, maxfev=10000) #hacky-fix to attempt never running out of allowed iterations
-            fit_params_imag, fit_cov_imag = curve_fit(circuit_impedance_imag, omega, self.z_meas_imag, p0=initial_guess, bounds=bounds, maxfev=10000) #hacky-fix to attempt never running out of allowed iterations
+            fit_params_real, fit_cov_real = curve_fit(circuit_impedance_real, omega, self.z_meas_real, p0=initial_guess, bounds=bounds, maxfev=30000) #hacky-fix to attempt never running out of allowed iterations
             t_elapsed = time.time() - t_init
-            opt_fit_real = function_handlers[self.topology]["function_ptr"](fit_params_real, [omega, scaling_array]) #compute the circuit real output for the optimal values
-            opt_fit_imag = function_handlers[self.topology]["function_ptr"](fit_params_imag, [omega, scaling_array]) #compute the circuit imaginary output for the optimal values
-            opt_fit = opt_fit_real + 1j*opt_fit_imag #complex impedance of the fit
+            opt_fit = function_handlers[self.topology]["function_ptr"](fit_params_real, [omega, scaling_array]) #compute the circuit real output for the optimal values
+            opt_params_scaled = fit_params_real*scaling_array #rescale the minimized parameters
             nmse = self.NMSE(self.z_meas.astype("complex"), opt_fit.astype("complex")) #NMSE score for both complex parts
-            chisqr = self.chi_square(self.z_meas.astype("complex"), opt_fit.astype("complex")) #chi square score for both complex parts
+            chisqr = self.chi_square(self.z_meas.astype("complex"), opt_fit.astype("complex")) #chi-square score for both complex parts
 
             if verbose:
                 print(f'[EquivalentCircuit] Non-linear least squares impedance fitting:')
                 print(f'NLLS fit elapsed time = {t_elapsed} s')
                 print(f'NMSE = {nmse}')
                 print(f'chi-square = {chisqr}')
+                fit_params = function_handlers[self.topology]["fit_params"]
+                print(f'fitted params = ')
+                for i in range(len(fit_params)):
+                    print(f'{fit_params[i]} = {opt_params_scaled[i]}')
                 print()
 
-            return OptimizerResults(opt_params=[fit_params_real, fit_params_imag], opt_params_scaled=[fit_params_real*scaling_array, fit_params_imag]*scaling_array,
+            return OptimizerResults(opt_params=fit_params_real, opt_params_scaled=opt_params_scaled,
                                     opt_fit=opt_fit, nmse_score=nmse, chi_square=chisqr, t_elapsed=t_elapsed) #return the optimized parameters
 
         else:

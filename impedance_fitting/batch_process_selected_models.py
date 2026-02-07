@@ -95,101 +95,110 @@ for i in range(len(z_meas_real)):
     longo_obj = fitting_utils.EquivalentCircuit("Longo2020", [z_meas_real[i,0,:], z_meas_imag[i,0,:]], spec_ice_obj.freqs)
     longo_params_BFGS = longo_obj.fit_circuit(np.array([1, 1, 1, 1, 1, 1, 1, 1]), np.array([1e3, 1e-7, 1e6, 1e-2, 1e3, 1e-1, 1, 1]), method="BFGS")
     try:
-        longo_params_NLLS = longo_obj.fit_circuit(np.array([1, 1, 1, 1, 1, 1, 1, 1]), np.array([1e3, 1e-7, 1e6, 1e-2, 1e3, 1e-1, 1, 1]), method="NLLS")
+        longo_params_NLLS = longo_obj.fit_circuit(np.array([1, 1, 1, 1, 1, 1, 1, 1]), np.array([1e5, 1e-7, 1e6, 1e-2, 1e3, 1e-1, 1, 1]), method="NLLS")
+        longo_z_hat_real_NLLS[i, 0, :] = longo_params_NLLS.opt_fit.real
+        longo_z_hat_imag_NLLS[i, 0, :] = longo_params_NLLS.opt_fit.imag
+        longo_NMSE_NLLS[i] = longo_params_NLLS.nmse_score
+        longo_chi_square_NLLS[i] = longo_params_NLLS.chi_square
     except:
-        continue
+        fouquet_NMSE_NLLS[i] = 1
+        fouquet_chi_square_NLLS[i] = np.inf
 
     zurich_obj = fitting_utils.EquivalentCircuit("Zurich2021", [z_meas_real[i, 0, :], z_meas_imag[i, 0, :]], spec_ice_obj.freqs)
-    zurich_params_BFGS = zurich_obj.fit_circuit(np.array([1, 1, 1, 1, 1, 1]), np.array([1e4, 1e-7, 1, 1e5, 1e3, 1e-8]), method="BFGS")
+    zurich_params_BFGS = zurich_obj.fit_circuit(np.array([1, 1, 1, 1, 1, 1]), np.array([1e5, 1e-7, 1, 1e5, 1e3, 1e-8]), method="BFGS")
     try:
-        zurich_params_NLLS = zurich_obj.fit_circuit(np.array([1, 1, 1, 1, 1, 1]), np.array([1e1, 1e-6, 1, 1e5, 1e3, 1e-8]), method="NLLS")
+        zurich_params_NLLS = zurich_obj.fit_circuit(np.array([1, 1, 1, 1, 1, 1]), np.array([1e5, 1e-7, 1, 1e5, 1e3, 1e-8]), method="NLLS")
+        zurich_z_hat_real_NLLS[i, 0, :] = zurich_params_NLLS.opt_fit.real
+        zurich_z_hat_imag_NLLS[i, 0, :] = zurich_params_NLLS.opt_fit.imag
+        zurich_NMSE_NLLS[i] = zurich_params_NLLS.nmse_score
+        zurich_chi_square_NLLS[i] = zurich_params_NLLS.chi_square
     except:
-        continue
+        zurich_NMSE_NLLS[i] = 1
+        zurich_chi_square_NLLS[i] = np.inf
 
     zhang_obj = fitting_utils.EquivalentCircuit("Zhang2024", [z_meas_real[i, 0, :], z_meas_imag[i, 0, :]], spec_ice_obj.freqs)
-    zhang_params_BFGS = zhang_obj.fit_circuit(np.array([1, 1, 1, 1, 1, 1]), np.array([1e-8, 1, 1e7, 1e3, 1e2, 1e-8]), method="BFGS")
+    zhang_params_BFGS = zhang_obj.fit_circuit(np.array([1, 1, 1, 1, 1, 1]), np.array([1e-9, 1, 1e6, 1e2, 1e2, 1e-8]), method="BFGS")
     try:
-        zhang_params_NLLS = zhang_obj.fit_circuit(np.array([1, 1, 1, 1, 1, 1]), np.array([1e-8, 1, 1e7, 1e2, 1e1, 1e-8]), method="NLLS")
+        zhang_params_NLLS = zhang_obj.fit_circuit(np.array([1, 1, 1, 1, 1, 1]), np.array([1e-9, 1, 1e6, 1e2, 1e2, 1e-8]), method="NLLS")
+        zhang_z_hat_real_NLLS[i, 0, :] = zhang_params_NLLS.opt_fit.real
+        zhang_z_hat_imag_NLLS[i, 0, :] = zhang_params_NLLS.opt_fit.imag
+        zhang_NMSE_NLLS[i] = zhang_params_NLLS.nmse_score
+        zhang_chi_square_NLLS[i] = zhang_params_NLLS.chi_square
     except:
-        continue
+        zhang_NMSE_NLLS[i] = 1
+        zhang_chi_square_NLLS[i] = np.inf
 
     yang_obj = fitting_utils.EquivalentCircuit("Yang2025", [z_meas_real[i, 0, :], z_meas_imag[i, 0, :]], spec_ice_obj.freqs)
-    yang_params_BFGS = yang_obj.fit_circuit(np.array([1, 1, 1, 1, 1, 1]), np.array([1e3, 1e4, 1e-8, 1, 1e4, 1e-8]), method="BFGS")
+    yang_params_BFGS = yang_obj.fit_circuit(np.array([1, 1, 1, 1, 1, 1]), np.array([1e4, 1e4, 1e-8, 1, 1e4, 1e-8]), method="BFGS")
     try:
-        yang_params_NLLS = yang_obj.fit_circuit(np.array([1, 1, 1, 1, 1, 1]), np.array([1e3, 1e4, 1e-8, 1, 1e4, 1e-8]), method="NLLS")
+        yang_params_NLLS = yang_obj.fit_circuit(np.array([1, 1, 1, 1, 1, 1]), np.array([1e4, 1e4, 1e-8, 1, 1e4, 1e-8]), method="NLLS")
+        yang_z_hat_real_NLLS[i, 0, :] = yang_params_NLLS.opt_fit.real
+        yang_z_hat_imag_NLLS[i, 0, :] = yang_params_NLLS.opt_fit.imag
+        yang_NMSE_NLLS[i] = yang_params_NLLS.nmse_score
+        yang_chi_square_NLLS[i] = yang_params_NLLS.chi_square
     except:
-        continue
+        yang_NMSE_NLLS[i] = 1
+        yang_chi_square_NLLS[i] = np.inf
 
     fouquet_obj = fitting_utils.EquivalentCircuit("Fouquet2005", [z_meas_real[i, 0, :], z_meas_imag[i, 0, :]], spec_ice_obj.freqs)
-    fouquet_params_BFGS = fouquet_obj.fit_circuit(np.array([1, 1, 1, 1, 1, 1]), np.array([1e4, 1e4, 1e-8, 1, 1e4, 1e-4]), method="BFGS")
+    fouquet_params_BFGS = fouquet_obj.fit_circuit(np.array([1, 1, 1, 1, 1, 1]), np.array([1e4, 1e3, 1e-8, 1, 1e4, 1e-4]), method="BFGS")
     try:
-        fouquet_params_NLLS = fouquet_obj.fit_circuit(np.array([1, 1, 1, 1, 1, 1]), np.array([1e2, 1e3, 1e-8, 1, 1e4, 1e-4]), method="NLLS")
+        fouquet_params_NLLS = fouquet_obj.fit_circuit(np.array([1, 1, 1, 1, 1, 1]), np.array([1e4, 1e3, 1e-8, 1, 1e4, 1e-4]), method="NLLS")
+        fouquet_z_hat_real_NLLS[i, 0, :] = fouquet_params_NLLS.opt_fit.real
+        fouquet_z_hat_imag_NLLS[i, 0, :] = fouquet_params_NLLS.opt_fit.imag
+        fouquet_NMSE_NLLS[i] = fouquet_params_NLLS.nmse_score
+        fouquet_chi_square_NLLS[i] = fouquet_params_NLLS.chi_square
     except:
-        continue
+        fouquet_NMSE_NLLS[i] = 1
+        fouquet_chi_square_NLLS[i] = np.inf
 
     awayssa_obj = fitting_utils.EquivalentCircuit("Awayssa2025", [z_meas_real[i, 0, :], z_meas_imag[i, 0, :]], spec_ice_obj.freqs)
-    awayssa_params_BFGS = awayssa_obj.fit_circuit(np.array([1, 1, 1, 1, 1]), np.array([1e3, 1e3, 1e-5, 1e-8, 1e-8]), method="BFGS")
-    awayssa_params_NLLS = awayssa_obj.fit_circuit(np.array([1, 1, 1, 1, 1]), np.array([1e2, 1e3, 1e-5, 1e-8, 1e-8]), method="NLLS")
+    awayssa_params_BFGS = awayssa_obj.fit_circuit(np.array([1, 1, 1, 1, 1]), np.array([1e3, 1e3, 1e-5, 1e-9, 1e-8]), method="BFGS")
+    try:
+        awayssa_params_NLLS = awayssa_obj.fit_circuit(np.array([1, 1, 1, 1, 1]), np.array([1e3, 1e3, 1e-5, 1e-9, 1e-8]), method="NLLS")
+        awayssa_z_hat_real_NLLS[i, 0, :] = awayssa_params_NLLS.opt_fit.real
+        awayssa_z_hat_imag_NLLS[i, 0, :] = awayssa_params_NLLS.opt_fit.imag
+        awayssa_NMSE_NLLS[i] = awayssa_params_NLLS.nmse_score
+        awayssa_chi_square_NLLS[i] = awayssa_params_NLLS.chi_square
+    except:
+        fouquet_NMSE_NLLS[i] = 1
+        fouquet_chi_square_NLLS[i] = np.inf
 
     #store the modelled impedance
     longo_z_hat_real_BFGS[i,0,:] = longo_params_BFGS.opt_fit.real
     longo_z_hat_imag_BFGS[i,0,:] = longo_params_BFGS.opt_fit.imag
     longo_NMSE_BFGS[i] = longo_params_BFGS.nmse_score
     longo_chi_square_BFGS[i] = longo_params_BFGS.chi_square
-    longo_z_hat_real_NLLS[i, 0, :] = longo_params_NLLS.opt_fit.real
-    longo_z_hat_imag_NLLS[i, 0, :] = longo_params_NLLS.opt_fit.imag
-    longo_NMSE_NLLS[i] = longo_params_NLLS.nmse_score
-    longo_chi_square_NLLS[i] = longo_params_NLLS.chi_square
     longo_fitted_params[i,:] = longo_params_BFGS.opt_params_scaled
 
     zurich_z_hat_real_BFGS[i,0,:] = zurich_params_BFGS.opt_fit.real
     zurich_z_hat_imag_BFGS[i,0,:] = zurich_params_BFGS.opt_fit.imag
     zurich_NMSE_BFGS[i] = zurich_params_BFGS.nmse_score
     zurich_chi_square_BFGS[i] = zurich_params_BFGS.chi_square
-    zurich_z_hat_real_NLLS[i, 0, :] = zurich_params_NLLS.opt_fit.real
-    zurich_z_hat_imag_NLLS[i, 0, :] = zurich_params_NLLS.opt_fit.imag
-    zurich_NMSE_NLLS[i] = zurich_params_NLLS.nmse_score
-    zurich_chi_square_NLLS[i] = zurich_params_NLLS.chi_square
     zurich_fitted_params[i,:] = zurich_params_BFGS.opt_params_scaled
 
     zhang_z_hat_real_BFGS[i,0,:] = zhang_params_BFGS.opt_fit.real
     zhang_z_hat_imag_BFGS[i,0,:] = zhang_params_BFGS.opt_fit.imag
     zhang_NMSE_BFGS[i] = zhang_params_BFGS.nmse_score
     zhang_chi_square_BFGS[i] = zhang_params_BFGS.chi_square
-    zhang_z_hat_real_NLLS[i, 0, :] = zhang_params_NLLS.opt_fit.real
-    zhang_z_hat_imag_NLLS[i, 0, :] = zhang_params_NLLS.opt_fit.imag
-    zhang_NMSE_NLLS[i] = zhang_params_NLLS.nmse_score
-    zhang_chi_square_NLLS[i] = zhang_params_NLLS.chi_square
     zhang_fitted_params[i,:] = zhang_params_BFGS.opt_params_scaled
 
     yang_z_hat_real_BFGS[i,0,:] = yang_params_BFGS.opt_fit.real
     yang_z_hat_imag_BFGS[i,0,:] = yang_params_BFGS.opt_fit.imag
     yang_NMSE_BFGS[i] = yang_params_BFGS.nmse_score
     yang_chi_square_BFGS[i] = yang_params_BFGS.chi_square
-    yang_z_hat_real_NLLS[i, 0, :] = yang_params_NLLS.opt_fit.real
-    yang_z_hat_imag_NLLS[i, 0, :] = yang_params_NLLS.opt_fit.imag
-    yang_NMSE_NLLS[i] = yang_params_NLLS.nmse_score
-    yang_chi_square_NLLS[i] = yang_params_NLLS.chi_square
     yang_fitted_params[i,:] = yang_params_BFGS.opt_params_scaled
 
     fouquet_z_hat_real_BFGS[i,0,:] = fouquet_params_BFGS.opt_fit.real
     fouquet_z_hat_imag_BFGS[i,0,:] = fouquet_params_BFGS.opt_fit.imag
     fouquet_NMSE_BFGS[i] = fouquet_params_BFGS.nmse_score
     fouquet_chi_square_BFGS[i] = fouquet_params_BFGS.chi_square
-    fouquet_z_hat_real_NLLS[i, 0, :] = fouquet_params_NLLS.opt_fit.real
-    fouquet_z_hat_imag_NLLS[i, 0, :] = fouquet_params_NLLS.opt_fit.imag
-    fouquet_NMSE_NLLS[i] = fouquet_params_NLLS.nmse_score
-    fouquet_chi_square_NLLS[i] = fouquet_params_NLLS.chi_square
     fouquet_fitted_params[i, :] = fouquet_params_BFGS.opt_params_scaled
 
     awayssa_z_hat_real_BFGS[i,0,:] = awayssa_params_BFGS.opt_fit.real
     awayssa_z_hat_imag_BFGS[i,0,:] = awayssa_params_BFGS.opt_fit.imag
     awayssa_NMSE_BFGS[i] = awayssa_params_BFGS.nmse_score
     awayssa_chi_square_BFGS[i] = awayssa_params_BFGS.chi_square
-    awayssa_z_hat_real_NLLS[i, 0, :] = awayssa_params_NLLS.opt_fit.real
-    awayssa_z_hat_imag_NLLS[i, 0, :] = awayssa_params_NLLS.opt_fit.imag
-    awayssa_NMSE_NLLS[i] = awayssa_params_NLLS.nmse_score
-    awayssa_chi_square_NLLS[i] = awayssa_params_NLLS.chi_square
     awayssa_fitted_params[i,:] = awayssa_params_BFGS.opt_params_scaled
 
 print(f'[impedance_fitting_freezing] finished computing all models in {time.time()-t_init}s')
