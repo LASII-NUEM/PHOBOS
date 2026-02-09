@@ -7,17 +7,24 @@ from impedance_fitting import script_to_overwrite_local_impedancedotpy_files
 
 #dictionary to handle function calls -> number of expected params and the function pointer
 function_handlers = {
-    "longo2020": {"n_params": 8, "function_ptr": equivalent_circuits.Longo2020, "partial_function_ptr": equivalent_circuits.Longo2020_partial, "bounds": [(0,np.inf), (0,np.inf), (0,np.inf), (0,np.inf), (0,np.inf), (0,np.inf), (0,1), (0,np.inf)]},
-    "fouquet2005": {"n_params": 6, "function_ptr": equivalent_circuits.Fouquet2005, "partial_function_ptr": equivalent_circuits.Fouquet2005_partial, "bounds": [(0,np.inf), (0,np.inf), (0,np.inf), (0,1), (0,np.inf), (0,np.inf)]},
-    "zurich2021": {"n_params": 6, "function_ptr": equivalent_circuits.Zurich2021, "partial_function_ptr": equivalent_circuits.Zurich2021_partial, "bounds": [(0,np.inf), (0,np.inf), (0,1), (0,np.inf), (0,np.inf), (0,np.inf)]},
-    "awayssa2025": {"n_params": 5, "function_ptr": equivalent_circuits.Awayssa2025, "partial_function_ptr": equivalent_circuits.Awayssa2025_partial, "bounds": [(0,np.inf), (0,np.inf), (0,np.inf), (0,np.inf), (0,np.inf)]},
-    "hong2021": {"n_params": 7, "function_ptr": equivalent_circuits.Hong2021, "partial_function_ptr": equivalent_circuits.Hong2021_partial, "bounds": [(0,np.inf), (0,np.inf), (0,1), (0,np.inf), (0,np.inf), (0,1), (0,np.inf)]},
-    "yang2025": {"n_params": 6, "function_ptr": equivalent_circuits.Yang2025, "partial_function_ptr": equivalent_circuits.Yang2025_partial, "bounds": [(0, np.inf), (0, np.inf), (0, np.inf), (0, 1), (0, np.inf), (0, np.inf)]},
-    "zhang2024": {"n_params": 6, "function_ptr": equivalent_circuits.Zhang2024, "partial_function_ptr": equivalent_circuits.Zhang2024_partial, "bounds": [(0, np.inf), (0, 1), (0, np.inf), (0, np.inf), (0, np.inf), (0, np.inf)]}
+    "longo2020": {"n_params": 8, "function_ptr": equivalent_circuits.Longo2020, "partial_function_ptr": equivalent_circuits.Longo2020_partial, "bounds": [(0,np.inf), (0,np.inf), (0,np.inf), (0,np.inf), (0,np.inf), (0,np.inf), (0,1), (0,np.inf)],
+                  "fit_params": ['R1', 'tau1', 'R2', 'tau2', 'R3', 'tau3', 'n3', 'tau4']},
+    "fouquet2005": {"n_params": 6, "function_ptr": equivalent_circuits.Fouquet2005, "partial_function_ptr": equivalent_circuits.Fouquet2005_partial, "bounds": [(0,np.inf), (0,np.inf), (0,np.inf), (0,1), (0,np.inf), (0,np.inf)],
+                    "fit_params": ['R1', 'R2', 'Q', 'n', 'Rd', 'taud']},
+    "zurich2021": {"n_params": 6, "function_ptr": equivalent_circuits.Zurich2021, "partial_function_ptr": equivalent_circuits.Zurich2021_partial, "bounds": [(0,np.inf), (0,np.inf), (0,1), (0,np.inf), (0,np.inf), (0,np.inf)],
+                   "fit_params": ["R1", "Q", "n", "Zws", "R2", "C"]},
+    "awayssa2025": {"n_params": 5, "function_ptr": equivalent_circuits.Awayssa2025, "partial_function_ptr": equivalent_circuits.Awayssa2025_partial, "bounds": [(0,np.inf), (0,np.inf), (0,np.inf), (0,np.inf), (0,np.inf)],
+                    "fit_params": ["R1", "R2", "C1", "L1", "C2"]},
+    "hong2021": {"n_params": 7, "function_ptr": equivalent_circuits.Hong2021, "partial_function_ptr": equivalent_circuits.Hong2021_partial, "bounds": [(0,np.inf), (0,np.inf), (0,1), (0,np.inf), (0,np.inf), (0,1), (0,np.inf)],
+                 "fit_params": ["R1", "Q1", "n1", "R2", "Q2", "n2", "R3"]},
+    "yang2025": {"n_params": 6, "function_ptr": equivalent_circuits.Yang2025, "partial_function_ptr": equivalent_circuits.Yang2025_partial, "bounds": [(0, np.inf), (0, np.inf), (0, np.inf), (0, 1), (0, np.inf), (0, np.inf)],
+                 "fit_params": ["R1", "R2", "Q", "n", "Rd", "taud"]},
+    "zhang2024": {"n_params": 6, "function_ptr": equivalent_circuits.Zhang2024, "partial_function_ptr": equivalent_circuits.Zhang2024_partial, "bounds": [(0, np.inf), (0, 1), (0, np.inf), (0, np.inf), (0, np.inf), (0, np.inf)],
+                  "fit_params": ["Q", "n", "R1", "R2", "Rd", "taud"]}
 }
 
 class OptimizerResults:
-    def __init__(self, opt_params=None, opt_params_scaled=None, opt_cost=None, opt_fit=None, nmse_score=None, n_iter=None, t_elapsed=None):
+    def __init__(self, opt_params=None, opt_params_scaled=None, opt_cost=None, opt_fit=None, nmse_score=None, chi_square=None, n_iter=None, t_elapsed=None):
         if opt_params is not None:
             self.opt_params = opt_params
         if opt_params_scaled is not None:
@@ -28,6 +35,8 @@ class OptimizerResults:
             self.opt_fit = opt_fit
         if nmse_score is not None:
             self.nmse_score = nmse_score
+        if chi_square is not None:
+            self.chi_square = chi_square
         if n_iter is not None:
             self.n_iter = n_iter
         if t_elapsed is not None:
@@ -51,8 +60,9 @@ class EquivalentCircuit:
         self.fit_method = None
 
         #validate data_medium
-        if not isinstance(data_medium, data_types.SpectroscopyData):
-            raise TypeError(f'[EquivalentCircuit] "data_medium" must be a SpectrumData structure! Curr. type = {type(data_medium)}')
+        expected_types = [data_types.SpectroscopyData, list]
+        if type(data_medium) not in expected_types:
+            raise TypeError(f'[EquivalentCircuit] "data_medium" must be {expected_types}! Curr. type = {type(data_medium)}')
         self.data_medium = data_medium
 
         #validate freqs
@@ -61,10 +71,15 @@ class EquivalentCircuit:
         self.freqs = freqs
 
         #compute the measured impedance from the SpectroscopyData objects
-        z_meas_real, z_meas_imag = characterization_utils.complex_impedance(data_medium, freqs)
-        self.z_meas_real = z_meas_real
-        self.z_meas_imag = z_meas_imag
-        self.z_meas = z_meas_real - 1j*z_meas_imag #complex impedance
+        if type(data_medium)==data_types.SpectroscopyData:
+            z_meas_real, z_meas_imag = characterization_utils.complex_impedance(data_medium, freqs)
+            self.z_meas_real = z_meas_real
+            self.z_meas_imag = z_meas_imag
+            self.z_meas = z_meas_real-1j*z_meas_imag #complex impedance
+        elif type(data_medium)==list:
+            self.z_meas_real = data_medium[0]
+            self.z_meas_imag = data_medium[1]
+            self.z_meas = self.z_meas_real-1j*self.z_meas_imag #complex impedance
 
     def CUMSE(self, theta, args):
         '''
@@ -77,14 +92,15 @@ class EquivalentCircuit:
         z_hat = z_hat.astype('complex')
         args[0] = args[0].astype('complex')
         SSE = np.sum(((args[0].real-z_hat.real)**2)+((args[0].imag-z_hat.imag)**2))
-        #SSE = np.sum((np.abs(args[0]) - np.abs(z_hat))**2) #sum of squared errors
+
         return SSE / len(z_hat)
 
-    def fit_circuit(self, initial_guess:np.ndarray, scaling_array:np.ndarray, method='BFGS'):
+    def fit_circuit(self, initial_guess:np.ndarray, scaling_array:np.ndarray, method='BFGS', verbose=False):
         '''
         :param initial_guess: the initial guess for the fit to run the iterative algorithms
         :param scaling_array: scale all the search parameters to avoid exploding gradients
         :param method: which optimization algorithm will be used to fit the circuit data
+        :param verbose: flag to print the statistics in the terminal
         :return: the parameters the best fit the expected equivalent circuit
         '''
 
@@ -116,11 +132,24 @@ class EquivalentCircuit:
             t_init = time.time()
             fit_obj = minimize(self.CUMSE, initial_guess, args=([self.z_meas, omega, scaling_array],), bounds=bounds, method='L-BFGS-B')
             t_elapsed = time.time() - t_init
-            print(f'[EquivalentCircuit] BFGS fit elapsed time = {t_elapsed} s')
             opt_fit = self.circuit_impedance(fit_obj.x, [omega, scaling_array]) #compute the circuit for the optimal values
+            opt_params_scaled = fit_obj.x*scaling_array #rescale the minimized parameters
             nmse = self.NMSE(self.z_meas.astype("complex"), opt_fit.astype("complex")) #NMSE score for both complex parts
-            return OptimizerResults(opt_params=fit_obj.x, opt_params_scaled=fit_obj.x*scaling_array, opt_cost=fit_obj.fun,
-                                    opt_fit=opt_fit, nmse_score=nmse, n_iter=fit_obj.nit, t_elapsed=t_elapsed) #return the optimized parameters
+            chisqr = self.chi_square(self.z_meas.astype("complex"), opt_fit.astype("complex")) #chi-square score for both complex parts
+
+            if verbose:
+                print(f'[EquivalentCircuit] Gradient-based impedance fitting:')
+                print(f't = {t_elapsed} s')
+                print(f'NMSE = {nmse}')
+                print(f'chi-square = {chisqr}')
+                fit_params = function_handlers[self.topology]["fit_params"]
+                print(f'fitted params = ')
+                for i in range(len(fit_params)):
+                    print(f'{fit_params[i]} = {opt_params_scaled[i]}')
+                print()
+
+            return OptimizerResults(opt_params=fit_obj.x, opt_params_scaled=opt_params_scaled, opt_cost=fit_obj.fun,
+                                    opt_fit=opt_fit, nmse_score=nmse, chi_square=chisqr, n_iter=fit_obj.nit, t_elapsed=t_elapsed) #return the optimized parameters
 
         elif self.fit_method == "NLLS":
             self.circuit_impedance = function_handlers[self.topology]["partial_function_ptr"]
@@ -129,18 +158,27 @@ class EquivalentCircuit:
 
             #handle the real and imaginary parts separately
             circuit_impedance_real = partial(self.circuit_impedance, scaling=scaling_array, return_type="real") #set scaling and return_type to static inputs
-            circuit_impedance_imag = partial(self.circuit_impedance, scaling=scaling_array, return_type="imag") #set scaling and return_type to static inputs
             t_init = time.time()
-            fit_params_real, fit_cov_real = curve_fit(circuit_impedance_real, omega, self.z_meas_real, p0=initial_guess, bounds=bounds)
-            fit_params_imag, fit_cov_imag = curve_fit(circuit_impedance_imag, omega, self.z_meas_imag, p0=initial_guess, bounds=bounds)
+            fit_params_real, fit_cov_real = curve_fit(circuit_impedance_real, omega, self.z_meas_real, p0=initial_guess, bounds=bounds, maxfev=30000) #hacky-fix to attempt never running out of allowed iterations
             t_elapsed = time.time() - t_init
-            print(f'[EquivalentCircuit] NLLS fit elapsed time = {t_elapsed} s')
-            opt_fit_real = function_handlers[self.topology]["function_ptr"](fit_params_real, [omega, scaling_array]) #compute the circuit real output for the optimal values
-            opt_fit_imag = function_handlers[self.topology]["function_ptr"](fit_params_imag, [omega, scaling_array]) #compute the circuit imaginary output for the optimal values
-            opt_fit = opt_fit_real + 1j*opt_fit_imag #complex impedance of the fit
+            opt_fit = function_handlers[self.topology]["function_ptr"](fit_params_real, [omega, scaling_array]) #compute the circuit real output for the optimal values
+            opt_params_scaled = fit_params_real*scaling_array #rescale the minimized parameters
             nmse = self.NMSE(self.z_meas.astype("complex"), opt_fit.astype("complex")) #NMSE score for both complex parts
-            return OptimizerResults(opt_params=[fit_params_real, fit_params_imag], opt_params_scaled=[fit_params_real*scaling_array, fit_params_imag]*scaling_array,
-                                    opt_fit=opt_fit, nmse_score=nmse, t_elapsed=t_elapsed) #return the optimized parameters
+            chisqr = self.chi_square(self.z_meas.astype("complex"), opt_fit.astype("complex")) #chi-square score for both complex parts
+
+            if verbose:
+                print(f'[EquivalentCircuit] Non-linear least squares impedance fitting:')
+                print(f'NLLS fit elapsed time = {t_elapsed} s')
+                print(f'NMSE = {nmse}')
+                print(f'chi-square = {chisqr}')
+                fit_params = function_handlers[self.topology]["fit_params"]
+                print(f'fitted params = ')
+                for i in range(len(fit_params)):
+                    print(f'{fit_params[i]} = {opt_params_scaled[i]}')
+                print()
+
+            return OptimizerResults(opt_params=fit_params_real, opt_params_scaled=opt_params_scaled,
+                                    opt_fit=opt_fit, nmse_score=nmse, chi_square=chisqr, t_elapsed=t_elapsed) #return the optimized parameters
 
         else:
             raise ValueError(f'[EquivalentCircuit] method = {method} not implemented! Try: {valid_methods}')
@@ -171,32 +209,65 @@ class EquivalentCircuit:
 
         return SSE/SSO
 
+    def chi_square(self, z:np.ndarray, z_hat:np.ndarray):
+        '''
+        :param z: the observed values (real measurements)
+        :param z_hat: the predicted values from the fitted circuit
+        :return: chi square of the fit
+        '''
+
+        #validate 'z'
+        if not isinstance(z, np.ndarray):
+            raise TypeError(f'[EquivalentCircuit] "z" must be a Numpy Array! Curr. type = {type(z)}')
+
+        #validate 'z_hat'
+        if not isinstance(z_hat, np.ndarray):
+            raise TypeError(f'[EquivalentCircuit] "z_hat" must be a Numpy Array! Curr. type = {type(z_hat)}')
+
+        #validate shape
+        if len(z) != len(z_hat):
+            raise ValueError(f'[EquivalentCircuit] "z" and "z_hat" must match in length!')
+
+        chi_square_real = ((z.real-z_hat.real)/np.abs(z))**2
+        chi_square_imag = ((z.imag-z_hat.imag)/np.abs(z))**2
+        chi_square = chi_square_real + chi_square_imag
+
+        return np.sum(chi_square)/len(z)
+
 class LinearKramersKronig:
-    def __init__(self, data_medium:data_types.SpectroscopyData, freqs:np.ndarray, c=0.5, max_iter=100, add_capacitor=True):
+    def __init__(self, data_medium:data_types.SpectroscopyData, freqs:np.ndarray, c=0.5, max_iter=100, add_capacitor=True, verbose=False):
         '''
         :param data_medium: SpectrumData structure for the frequency sweep in the medium to be characterized
         :param freqs: array with the swept frequencies
         :param c: threshold for overfitting criterion (mu)
         :param max_iter: maximum number of M RC pairs
         :param add_capacitor: flag to add a capacitor in series to the R_ohm+L+R_k block
+        :param verbose: flag to print the statistics in the terminal
         '''
 
         #validate data_medium
-        if not isinstance(data_medium, data_types.SpectroscopyData):
-            raise TypeError(f'[KramersKronig] "data_medium" must be a SpectrumData structure! Curr. type = {type(data_medium)}')
+        expected_types = [data_types.SpectroscopyData, list]
+        if type(data_medium) not in expected_types:
+            raise TypeError(f'[LinearKramersKronig] "data_medium" must be {expected_types}! Curr. type = {type(data_medium)}')
         self.data_medium = data_medium
 
         #validate freqs
         if not isinstance(freqs, np.ndarray):
-            raise TypeError(f'[KramersKronig] "freqs" must be a Numpy Array! Curr. type = {type(freqs)}')
+            raise TypeError(f'[LinearKramersKronig] "freqs" must be a Numpy Array! Curr. type = {type(freqs)}')
         self.freqs = freqs
 
         #compute the measured impedance from the SpectroscopyData objects
-        z_meas_real, z_meas_imag = characterization_utils.complex_impedance(data_medium, freqs)
-        self.z_meas_real = z_meas_real
-        self.z_meas_imag = z_meas_imag
-        self.z_meas = z_meas_real - 1j*z_meas_imag #complex impedance
-        self.z_meas = self.z_meas.astype("complex")
+        if type(data_medium)==data_types.SpectroscopyData:
+            z_meas_real, z_meas_imag = characterization_utils.complex_impedance(data_medium, freqs)
+            self.z_meas_real = z_meas_real
+            self.z_meas_imag = z_meas_imag
+            self.z_meas = z_meas_real - 1j*z_meas_imag #complex impedance
+            self.z_meas = self.z_meas.astype("complex")
+        elif type(data_medium)==list:
+            self.z_meas_real = data_medium[0]
+            self.z_meas_imag = data_medium[1]
+            self.z_meas = self.z_meas_real-1j*self.z_meas_imag #complex impedance
+            self.z_meas = self.z_meas.astype("complex")
 
         #fit routine
         self.tau = None #distribution of the time constants
@@ -204,9 +275,20 @@ class LinearKramersKronig:
         self.fit_params, self.fit_components = self.validate_data(self.z_meas, self.freqs, c=c, max_iter=max_iter, add_capacitor=add_capacitor) #run the LKK algorithm
         self.t_elapsed = time.time() - t_init #store the computation time of the algorithm
         self.z_hat_real, self.z_hat_imag = self.generate_MRCircuit(self.freqs, self.fit_params, self.tau) #compute the complex impedance for the fitted value
-        self.z_hat = self.z_hat_real - 1j*self.z_hat_imag #complex impedance
+        self.z_hat = self.z_hat_real + 1j*self.z_hat_imag #complex impedance
         self.z_hat = self.z_hat.astype("complex")
         self.fit_residues_real, self.fit_residues_imag = self.compute_residues(self.z_meas, self. z_hat)
+        self.chi_square = self.compute_chi_square(self.z_meas, self.z_hat)
+
+        if verbose:
+            print(f'[LinerKramersKronig] Data validity test:')
+            if self.chi_square > 1e-2:
+                print(f'Linear Kramers-Kronig test failed: x² = {self.chi_square}')
+                print()
+            else:
+                print(f'Linear Kramers-Kronig test passed: x² = {self.chi_square}')
+                print(f'Optimal M RC components = {self.fit_components}')
+                print()
 
     def compute_residues(self, z, z_hat):
         '''
@@ -319,3 +401,28 @@ class LinearKramersKronig:
         z_hat = eval(circuit_string, script_to_overwrite_local_impedancedotpy_files.circuit_elements) #compute the complex impedance
 
         return z_hat.real, z_hat.imag
+
+    def compute_chi_square(self, z:np.ndarray, z_hat:np.ndarray):
+        '''
+        :param z: the observed values (real measurements)
+        :param z_hat: the predicted values from the fitted circuit
+        :return: chi square of the fit
+        '''
+
+        #validate 'z'
+        if not isinstance(z, np.ndarray):
+            raise TypeError(f'[LinearKramersKronig] "z" must be a Numpy Array! Curr. type = {type(z)}')
+
+        #validate 'z_hat'
+        if not isinstance(z_hat, np.ndarray):
+            raise TypeError(f'[LinearKramersKronig] "z_hat" must be a Numpy Array! Curr. type = {type(z_hat)}')
+
+        #validate shape
+        if len(z) != len(z_hat):
+            raise ValueError(f'[LinearKramersKronig] "z" and "z_hat" must match in length!')
+
+        chi_square_real = ((z.real-z_hat.real)/np.abs(z))**2
+        chi_square_imag = ((z.imag-z_hat.imag)/np.abs(z))**2
+        chi_square = chi_square_real+chi_square_imag
+
+        return np.sum(chi_square)/len(z)
