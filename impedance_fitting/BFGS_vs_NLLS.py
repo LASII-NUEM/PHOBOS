@@ -5,18 +5,23 @@ matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 
 #PHOBOS spectroscopy acquisition
-spec_ice_obj = file_lcr.read('../data/testICE_30_01_26/c_ice.csv', n_samples=3, sweeptype="cell", acquisition_mode="spectrum", aggregate=np.mean)
-spec_h2o_obj = file_lcr.read('../data/testICE_30_01_26/c1.csv', n_samples=3, sweeptype="cell", acquisition_mode="spectrum", aggregate=np.mean)
+spec_obj = file_lcr.read('../data/testICE_30_01_26/cice.csv', n_samples=3, sweeptype="cell", acquisition_mode="spectrum", aggregate=np.mean)
+freq_thresh = 100
+freq_mask = spec_obj.freqs >= freq_thresh
+spec_obj.freqs = spec_obj.freqs[freq_mask]
+spec_obj.Cp = spec_obj.Cp[freq_mask]
+spec_obj.Rp = spec_obj.Rp[freq_mask]
+spec_obj.n_freqs = len(spec_obj.freqs)
 
 #minimizer arguments
 init_guess_BFGS = np.array([1, 1, 1, 1, 1, 1, 1, 1])
-scaling_array_BFGS = np.array([1e3, 1e-7, 1e6, 1e-2, 1e3, 1e-1, 1, 1])
+scaling_array_BFGS = np.array([1e3, 1e-7, 1e6, 1e-2, 1e4, 1e-1, 1, 1])
 
 init_guess_NLLS = np.array([1, 1, 1, 1, 1, 1, 1, 1])
-scaling_array_NLLS = np.array([1e5, 1e-7, 1e6, 1e-2, 1e3, 1e-1, 1, 1])
+scaling_array_NLLS = np.array([1e3, 1e-7, 1e6, 1e-2, 1e4, 1e-1, 1, 1])
 
 #Impedance fitting w/ BFGS
-fit_obj = fitting_utils.EquivalentCircuit("Longo2020", spec_ice_obj, spec_ice_obj.freqs) #quivalent circuit object
+fit_obj = fitting_utils.EquivalentCircuit("Longo2020", spec_obj, spec_obj.freqs) #quivalent circuit object
 fit_params_BFGS = fit_obj.fit_circuit(init_guess_BFGS, scaling_array_BFGS, method="BFGS", verbose=True)
 fit_params_NLLS = fit_obj.fit_circuit(init_guess_NLLS, scaling_array_NLLS, method="NLLS", verbose=True)
 
@@ -45,11 +50,11 @@ plt.show()
 plt.figure()
 plt.subplot(1,2,1)
 leg = []
-plt.scatter(spec_ice_obj.freqs, np.abs(fit_obj.z_meas), s=20)
+plt.scatter(spec_obj.freqs, np.abs(fit_obj.z_meas), s=20)
 leg.append('measured')
-plt.plot(spec_ice_obj.freqs, np.abs(fit_params_BFGS.opt_fit), color="tab:orange")
+plt.plot(spec_obj.freqs, np.abs(fit_params_BFGS.opt_fit), color="tab:orange")
 leg.append('BFGS')
-plt.plot(spec_ice_obj.freqs, np.abs(fit_params_NLLS.opt_fit), color="tab:green")
+plt.plot(spec_obj.freqs, np.abs(fit_params_NLLS.opt_fit), color="tab:green")
 leg.append('NLLS')
 plt.ylabel("|Z|")
 plt.xlabel("Frequency [Hz]")
@@ -59,11 +64,11 @@ plt.grid()
 
 plt.subplot(1,2,2)
 leg = []
-plt.scatter(spec_ice_obj.freqs, np.angle(fit_obj.z_meas.astype('complex')), s=20)
+plt.scatter(spec_obj.freqs, np.angle(fit_obj.z_meas.astype('complex')), s=20)
 leg.append('measured')
-plt.plot(spec_ice_obj.freqs, np.angle(fit_params_BFGS.opt_fit), color="tab:orange")
+plt.plot(spec_obj.freqs, np.angle(fit_params_BFGS.opt_fit), color="tab:orange")
 leg.append('BFGS')
-plt.plot(spec_ice_obj.freqs, np.angle(fit_params_NLLS.opt_fit), color="tab:green")
+plt.plot(spec_obj.freqs, np.angle(fit_params_NLLS.opt_fit), color="tab:green")
 leg.append('NLLS')
 plt.ylabel("∠Z [rad]")
 plt.xlabel("Frequency [Hz]")

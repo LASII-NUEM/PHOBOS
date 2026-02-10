@@ -2,6 +2,7 @@ import numpy as np
 from framework import file_lcr, characterization_utils, fitting_utils, data_types
 import pickle
 import os
+import time
 
 class MediumData:
     def __init__(self, topology:dict, data_medium:data_types.SpectroscopyData, data_air:data_types.SpectroscopyData, media:str, eps_func=characterization_utils.dielectric_params_generic):
@@ -49,14 +50,28 @@ class MediumData:
 
         if linKK_obj.chi_square > 1e-2:
             print(f'[MediumData] {self.media} failed the Linear Kramers-Kronig test: x² = {linKK_obj.chi_square}')
-            fitted_circuits = {"z_meas_real": self.z_real, "z_meas_imag": self.z_imag,
-                               "z_hat_real_KK": linKK_obj.z_hat_real, "z_hat_imag_KK": linKK_obj.z_hat_imag, "chi_square_KK": linKK_obj.chi_square,
-                               "params_KK": linKK_obj.fit_params, "M_KK": linKK_obj.fit_components}
+            fitted_circuits = {"z_meas_real": self.z_real,
+                               "z_meas_imag": self.z_imag,
+                               "z_hat_real_KK": linKK_obj.z_hat_real,
+                               "z_hat_imag_KK": linKK_obj.z_hat_imag,
+                               "chi_square_KK": linKK_obj.chi_square,
+                               "params_KK": linKK_obj.fit_params,
+                               "M_KK": linKK_obj.fit_components,
+                               "status_KK": False}
         else:
-            fitted_circuits = dict((circ_name, {"z_meas_real": self.z_real, "z_meas_imag": self.z_imag,
-                                                "z_hat_real_KK": linKK_obj.z_hat_real, "z_hat_imag_KK": linKK_obj.z_hat_imag, "chi_square_KK": linKK_obj.chi_square,
-                                                "params_KK": linKK_obj.fit_params, "M_KK": linKK_obj.fit_components,
-                                                "z_hat_real": None, "z_hat_imag": None, "nmse": None, "params": None, "t": None})
+            fitted_circuits = dict((circ_name, {"z_meas_real": self.z_real,
+                                                "z_meas_imag": self.z_imag,
+                                                "z_hat_real_KK": linKK_obj.z_hat_real,
+                                                "z_hat_imag_KK": linKK_obj.z_hat_imag,
+                                                "chi_square_KK": linKK_obj.chi_square,
+                                                "params_KK": linKK_obj.fit_params,
+                                                "M_KK": linKK_obj.fit_components,
+                                                "status_KK": True,
+                                                "z_hat_real": None,
+                                                "z_hat_imag": None,
+                                                "nmse": None,
+                                                "params": None,
+                                                "t": None})
                                                 for circ_name in list(topology.keys())) #dictionary to store fitted circuits parameters and values to a dictionary
             for circuit in list(topology.keys()):
                 curr_fit_attributes = topology[circuit] #extract guess and scaling from the input topology argument
@@ -80,8 +95,8 @@ class MediumData:
                     params_NLLS = curr_fit_params_NLLS.opt_params_scaled
                     t_NLLS = curr_fit_params_NLLS.t_elapsed
                 except:
-                    z_hat_real_NLLS = np.zeros(shape=(len(self.z_real), 1, len(data_medium.freqs)))
-                    z_hat_imag_NLLS = np.zeros(shape=(len(self.z_imag), 1, len(data_medium.freqs)))
+                    z_hat_real_NLLS = np.zeros(shape=(len(self.z_real), 1, len(freqs)))
+                    z_hat_imag_NLLS = np.zeros(shape=(len(self.z_imag), 1, len(freqs)))
                     nmse_NLLS = 1
                     params_NLLS = np.zeros_like(params_BFGS)
                     t_NLLS = None
@@ -208,7 +223,11 @@ class BatchOrganizer:
         except:
             print(f'[BatchOrganizer] LCR batch processing failed! Processing data without it...')
 
-        self.ia_obj = BatchIA() #TODO: process the batch data for IA data
+        try:
+            self.ia_obj = BatchIA() #TODO: process the batch data for IA data
+            print(f'[BatchOrganizer] IA batch processing finished!')
+        except:
+            print(f'[BatchOrganizer] IA batch processing failed! Processing data without it...')
 
         #if True, save the attributes as a pickle file
         if save:
@@ -218,3 +237,123 @@ class BatchOrganizer:
                 pickle.dump(self, handle, protocol=pickle.HIGHEST_PROTOCOL)
             print(f'[BatchOrganizer] Batch processing output saved at: {self.full_relative_path}')
 
+class BatchImpedanceFit:
+    def __init__(self, filename, circuits:dict, freq_threshold=None, n_samples=1, sweeptype="cell", aggregate=None, timezone=-3, save=True):
+        '''
+        :param filename: name of the .csv file with
+        :param circuits: list of equivalent circuits to fit the data
+        :param freq_threshold: value to filter frequencies from (i.e., 100 filters from 100 Hz. OBS: None to skip filtering)
+        :param n_samples: samples per EIS sweep
+        :param sweeptype: which hardware was used to acquire the signals
+        :param aggregate: how to organize the data for each mode (None as default)
+        :param timezone: timezone to convert unix timestamp to human timestamp
+        :param save: flag to enable pickle dumping
+        '''
+
+        #validate 'filename'
+        if not os.path.exists(filename):
+            raise ValueError(f'[BatchImpedanceFit] File {filename} does not exist!')
+
+        #validate 'topology'
+        if not isinstance(circuits, dict):
+            raise TypeError(f'[BatchImpedanceFit] "circuits" must be a dictionary!')
+
+        #validate 'freq_threshold'
+        if not freq_threshold is None:
+            if isinstance(freq_threshold, float) or isinstance(freq_threshold, int):
+                if not freq_threshold >= 0:
+                    raise ValueError(f'[BatchImpedanceFit] Frequency threshold cannot be smaller than zero!')
+            else:
+                raise TypeError(f'[BatchImpedanceFit] Frequency threshold must be an integer or float!')
+
+        self.circuits = circuits
+        self.media_obj = file_lcr.read(filename, n_samples=n_samples, sweeptype=sweeptype, acquisition_mode="freq", aggregate=aggregate, timezone=timezone)
+
+        #filter frequency threshold
+        if freq_threshold:
+            freq_mask = self.media_obj.freqs >= freq_threshold #frequency mask
+            self.media_obj.freqs = self.media_obj.freqs[freq_mask] #filter frequencies
+            self.media_obj.n_freqs = len(self.media_obj.freqs) #update number of swept frequencies
+            self.media_obj.Cp = self.media_obj.Cp[:,:,freq_mask] #filter capacitance
+            self.media_obj.Rp = self.media_obj.Rp[:,:,freq_mask] #filter resistance
+
+        self.z_real, self.z_imag = characterization_utils.complex_impedance(self.media_obj, self.media_obj.freqs) #compute the complex impedance
+        t_init = time.time()
+        self.fit_data = self.batch_fit_circuit(self.circuits, self.z_real, self.z_imag, self.media_obj.freqs) #batch fitting of the circuits
+        print(f'[BatchImpedanceFit] finished computing all models in {time.time() - t_init}s')
+
+    def batch_fit_circuit(self, circuits: dict, z_real:np.ndarray, z_imag:np.ndarray, freqs: np.ndarray):
+        '''
+        :param circuits: list of circuit topologies that output the modeled impedance of the expected circuit
+        :param z_real: the real part of the complex impedance from the measured data
+        :param z_imag: the imaginary part of the complex impedance from the measured data
+        :param freqs: array with the swept frequencies
+        :return: a dictionary with the fitted data, the circuit parameters, and goodness of fit statistics
+        '''
+        n_samples = len(z_real) #number of sweeps
+        n_freqs = len(freqs) #number of swept frequencies
+        fitted_circuits = dict((circ_name, {"z_meas_real": np.zeros(shape=(n_samples, n_freqs)),
+                                            "z_meas_imag": np.zeros(shape=(n_samples, n_freqs)),
+                                            "z_hat_real_KK": np.zeros(shape=(n_samples, n_freqs)),
+                                            "z_hat_imag_KK": np.zeros(shape=(n_samples, n_freqs)),
+                                            "chi_square_KK": np.zeros(shape=(n_samples,)),
+                                            "M_KK": np.zeros(shape=(n_samples,)),
+                                            "status_KK": np.zeros(shape=(n_samples,), dtype=bool),
+                                            "z_hat_real": np.zeros(shape=(n_samples, n_freqs, 2)),
+                                            "z_hat_imag": np.zeros(shape=(n_samples, n_freqs, 2)),
+                                            "nmse": np.zeros(shape=(n_samples, 2)),
+                                            "t": np.zeros(shape=(n_samples, 2))})
+                                            for circ_name in list(circuits.keys())) #dictionary to store fitted circuits parameters and values to a dictionary
+
+        #process each sample separately
+        for i in range(0, n_samples):
+            curr_z_real = z_real[i,0,:] #slice the real part
+            curr_z_imag = z_imag[i,0,:] #slice the real part
+            linKK_obj = fitting_utils.LinearKramersKronig([curr_z_real, curr_z_imag], freqs, c=0.5, max_iter=100, add_capacitor=True, verbose=False) #validate the data with the Kramers-Kronig test before fitting
+
+            #thresholding
+            if linKK_obj.chi_square > 1e-2:
+                status = False
+            else:
+                status = True
+
+            #process each equivalent circuit separately
+            for circuit in list(circuits.keys()):
+                curr_fit_attributes = circuits[circuit] #extract guess and scaling from the input topology argument
+                curr_fit_obj = fitting_utils.EquivalentCircuit(circuit, [curr_z_real, curr_z_imag], freqs)
+
+                #fit using the gradient-based method (BFGS)
+                curr_fit_params_BFGS = curr_fit_obj.fit_circuit(curr_fit_attributes["guess"], curr_fit_attributes["scale"], method="BFGS")
+                z_hat_real_BFGS = curr_fit_params_BFGS.opt_fit.real #real part of the fitting
+                z_hat_imag_BFGS = curr_fit_params_BFGS.opt_fit.imag #imaginary part of the fitting
+                nmse_BFGS = curr_fit_params_BFGS.nmse_score
+                t_BFGS = curr_fit_params_BFGS.t_elapsed
+
+                #fit using the non-linear-least-squares-based method (NLLS)
+                #hacky-fix: scipy's curve fit has an issue that when the total iterations are reached without convergence, it raises an error
+                try:
+                    curr_fit_params_NLLS = curr_fit_obj.fit_circuit(curr_fit_attributes["guess"], curr_fit_attributes["scale"], method="NLLS")
+                    z_hat_real_NLLS = curr_fit_params_NLLS.opt_fit.real
+                    z_hat_imag_NLLS = curr_fit_params_NLLS.opt_fit.imag
+                    nmse_NLLS = curr_fit_params_NLLS.nmse_score
+                    t_NLLS = curr_fit_params_NLLS.t_elapsed
+                except:
+                    z_hat_real_NLLS = np.zeros(shape=(1, len(freqs)))
+                    z_hat_imag_NLLS = np.zeros(shape=(1, len(freqs)))
+                    nmse_NLLS = 1
+                    t_NLLS = None
+
+                #attribute the computed values to the circuit key at the fit circuit dictionary
+                fitted_circuits[circuit]["z_meas_real"][i,:] = curr_z_real
+                fitted_circuits[circuit]["z_meas_imag"][i,:] = curr_z_imag
+                fitted_circuits[circuit]["z_hat_real_KK"][i,:] = linKK_obj.z_hat_real
+                fitted_circuits[circuit]["z_hat_imag_KK"][i,:] = linKK_obj.z_hat_real
+                fitted_circuits[circuit]["chi_square_KK"][i] = linKK_obj.chi_square
+                fitted_circuits[circuit]["M_KK"][i] = linKK_obj.fit_components
+                fitted_circuits[circuit]["status_KK"][i] = status
+                fitted_circuits[circuit]["z_hat_real"][i,:,:] = np.vstack((z_hat_real_BFGS, z_hat_real_NLLS)).T
+                fitted_circuits[circuit]["z_hat_imag"][i,:,:] = np.vstack((z_hat_imag_BFGS, z_hat_imag_NLLS)).T
+                fitted_circuits[circuit]["nmse"][i,:] = np.vstack((nmse_BFGS, nmse_NLLS)).T
+                fitted_circuits[circuit]["t"][i,:] = np.vstack((t_BFGS, t_NLLS)).T
+
+        return fitted_circuits
