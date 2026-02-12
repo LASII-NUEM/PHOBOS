@@ -4,11 +4,11 @@ import numpy as np
 import os
 from framework import data_types
 
-def read(filename:str, n_samples:int, sweeptype="flange", acquisition_mode="freq", aggregate=None, timezone=-3):
+def read(filename:str, n_samples:int, electrode="flange", acquisition_mode="freq", aggregate=None, timezone=-3):
     '''
     :param filename: path where the .csv is stored
     :param n_samples: samples per pair swept
-    :param sweeptype: which hardware was used to acquire the signals
+    :param electrode: which hardware was used to acquire the signals
     :param acquisition_mode: how the data is expected to be organized ('flange' for 10-mode sweep or 'spectrum' for full spectroscopy)
     :param aggregate: how to organize the data for each mode (None as default)
     :param timezone: timezone to convert unix timestamp to human timestamp
@@ -22,11 +22,11 @@ def read(filename:str, n_samples:int, sweeptype="flange", acquisition_mode="freq
     if not (n_samples>0):
         raise ValueError(f'[file_lcr] n_samples = {n_samples}, must be > 0!')
 
-    #validate sweeptype
-    sweeptype = sweeptype.lower() #convert to lowercase
-    valid_sweeps = ['flange', 'cell', 'custom'] #list of valid sweep types
-    if sweeptype not in valid_sweeps:
-        raise ValueError(f'[file_lcr] sweeptype = {sweeptype} not implemented! Try: {valid_sweeps}')
+    #validate electrode
+    electrode = electrode.lower() #convert to lowercase
+    valid_electrode = ['flange', 'cell', 'custom'] #list of valid sweep types
+    if electrode not in valid_electrode:
+        raise ValueError(f'[file_lcr] electrode = {electrode} not implemented! Try: {valid_electrode}')
 
     #validate acquisition_mode
     acquisition_mode = acquisition_mode.lower()  # convert to lowercase
@@ -43,7 +43,7 @@ def read(filename:str, n_samples:int, sweeptype="flange", acquisition_mode="freq
     #process the raw data output from the PHOBOS acquisition system into a custom data structure
     raw_data = pd.read_csv(filename).to_numpy() #process the raw data output from the PHOBOS acquisition system
 
-    if sweeptype == "flange":
+    if electrode == "flange":
         if acquisition_mode == 'freq':
             swept_freqs = [float(freq.replace(" ", "").replace("Cp", "")) for freq in header_data if 'Cp' in freq]
             swept_freqs = np.array(swept_freqs) #convert to numpy array
@@ -51,9 +51,9 @@ def read(filename:str, n_samples:int, sweeptype="flange", acquisition_mode="freq
         elif acquisition_mode == 'spectrum':
             swept_freqs = [float(freq.replace(" ", "").replace("Cp", "")) for freq in header_data if 'Cp' in freq]
             swept_freqs = np.array(swept_freqs)  # convert to numpy array
-            data = data_types.SpectroscopyData(raw_data, swept_freqs, n_samples, sweeptype=sweeptype, aggregate=aggregate)
+            data = data_types.SpectroscopyData(raw_data, swept_freqs, n_samples, electrode=electrode, aggregate=aggregate)
 
-    elif sweeptype == "cell":
+    elif electrode == "cell":
         if acquisition_mode == 'freq':
             swept_freqs = [float(freq.replace(" ", "").replace("Z", "")) for freq in header_data if 'Z' in freq]
             if len(swept_freqs) == 0:
@@ -65,9 +65,9 @@ def read(filename:str, n_samples:int, sweeptype="flange", acquisition_mode="freq
             if len(swept_freqs) == 0:
                 swept_freqs = [float(freq.replace(" ", "").replace("Cp", "")) for freq in header_data if 'Cp' in freq]
             swept_freqs = np.array(swept_freqs) #convert to numpy array
-            data = data_types.SpectroscopyData(raw_data, swept_freqs, n_samples, sweeptype=sweeptype, aggregate=aggregate)
+            data = data_types.SpectroscopyData(raw_data, swept_freqs, n_samples, electrode=electrode, aggregate=aggregate)
 
-    elif sweeptype == "custom":
+    elif electrode == "custom":
         data = None #TODO: generate custom-based files
 
     return data

@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import datetime
-from framework import file_lcr, file_lvm
+from framework import file_lcr, file_lvm, file_ia
 
 class FlangeData:
     def __init__(self, electrode_data:np.ndarray, swept_freqs:np.ndarray, n_samples=1, aggregate=None, timezone=-3):
@@ -153,12 +153,12 @@ class CommercialCellData:
         self.human_timestamps = pd.to_datetime(self.unix_timestamps, unit='s').to_numpy()
 
 class SpectroscopyData:
-    def __init__(self, electrode_data:np.ndarray, swept_freqs:np.ndarray, n_samples=1, sweeptype="flange", aggregate=None, hardware="lcr"):
+    def __init__(self, electrode_data:np.ndarray, swept_freqs:np.ndarray, n_samples=1, electrode="flange", aggregate=None, hardware="lcr"):
         '''
         :param electrode_data: raw data output from the PHOBOS acquisition system
         :param swept_freqs: array with all swept frequencies
         :param n_samples: samples per pair swept (1 by default)
-        :param sweeptype: which hardware was used to acquire the signals
+        :param electrode: which hardware was used to acquire the signals
         :param aggregate: how to organize the data for each mode (None as default)
         :param hardware: which hardware was used to acquire the signals (different file formats)
         '''
@@ -171,11 +171,11 @@ class SpectroscopyData:
         if type(swept_freqs) != np.ndarray:
             raise TypeError(f'[SpectroscopyData] Swept frequencies data must be a numpy array! Curr. type = {type(swept_freqs)}')
 
-        #validate sweeptype
-        sweeptype = sweeptype.lower()  # convert to lowercase
-        valid_sweeps = ['flange', 'cell', 'custom']  # list of valid sweep types
-        if sweeptype not in valid_sweeps:
-            raise ValueError(f'[SpectroscopyData] sweeptype = {sweeptype} not implemented! Try: {valid_sweeps}')
+        #validate electrode
+        electrode = electrode.lower()  # convert to lowercase
+        valid_electrode = ['flange', 'cell', 'custom']  # list of valid sweep types
+        if electrode not in valid_electrode:
+            raise ValueError(f'[SpectroscopyData] electrode = {electrode} not implemented! Try: {valid_electrode}')
 
         self.freqs = swept_freqs
         self.n_freqs = len(swept_freqs)
@@ -196,8 +196,9 @@ class SpectroscopyData:
         self.Rp = None #resistance readings
 
         if hardware == 'lcr':
-            if sweeptype == 'cell':
-                self.sweeptype = sweeptype  # store the sweeptype
+            if electrode == 'cell':
+                self.electrode = electrode  # store the electrode
+                self.n_modes = 1
 
                 #organize the data based on the CSV format
                 valid_electrodes = electrode_data[:,2:] #filter the array from the first electrode reading
@@ -213,8 +214,8 @@ class SpectroscopyData:
                     self.Cp = aggregate(self.Cp, axis=0) #mean over the n_samples
                     self.Rp = aggregate(self.Rp, axis=0) #mean over the n_samples
 
-            elif sweeptype == 'flange':
-                self.sweeptype = sweeptype #store the sweeptype
+            elif electrode == 'flange':
+                self.electrode = electrode #store the electrode
 
                 #infer the modes of e/r
                 self.n_modes = len(set(electrode_data[:int(n_samples * 10), 1])) #number of unique modes up to 10 samples
@@ -235,15 +236,16 @@ class SpectroscopyData:
         elif hardware == 'ia':
             self.Cp = electrode_data[0,:].astype('float')  # update capacitance readings
             self.Rp = electrode_data[1,:].astype('float')  # update resistance readings
+            self.n_modes = 1
 
         elif hardware == 'admx':
-            if sweeptype == 'cell':
-                self.sweeptype = sweeptype  # store the sweeptype
+            if electrode == 'cell':
+                self.electrode = electrode  # store the electrode
                 self.freqs *= 1000 #kHz to Hz
                 self.Cp = electrode_data[:,-2].astype('float') #update capacitance readings
                 self.Rp = electrode_data[:,-1].astype('float') #update resistance readings
-            elif sweeptype == 'flange':
-                print(f'[SpectroscopyData] sweeptype = {sweeptype} not implemented!')
+            elif electrode == 'flange':
+                print(f'[SpectroscopyData] electrode = {electrode} not implemented!')
 
 class TemperatureData:
     def __init__(self, thermo_data:np.ndarray, abs_timestamp:datetime.datetime, ):
@@ -321,25 +323,25 @@ class TempPressData:
         self.human_timestamp = self.human_timestamp.astype('datetime64') #convert from datetime object to numpy datetime
 
 class PHOBOSData:
-    def __init__(self, filename_electrode:str, filename_temperature=None, n_samples=1, normalize=True, temp_setup="freezer", sweeptype="flange", acquisition_mode="freq", aggregate=None, timezone=-3):
+    def __init__(self, filename_electrode:str, filename_temperature=None, n_samples=1, normalize=True, temp_setup="freezer", electrode="flange", acquisition_mode="freq", aggregate=None, timezone=-3):
         '''
         :param filename_electrode: path where the .csv is stored
         :param filename_temperature: path where the .lvm is stored
         :param n_samples: samples per pair swept
         :param normalize: apply media-based normalization
         :param temp_setup: define with type of test the data was taken from
-        :param sweeptype: which hardware was used to acquire the signals
+        :param electrode: which hardware was used to acquire the signals
         :param acquisition_mode: how the data is expected to be organized ('flange' for 10-mode sweep or 'spectrum' for full spectroscopy)
         :param aggregate: how to organize the data for each mode (None as default)
         :param timezone: timezone to convert unix timestamp to human timestamp
         '''
 
         #process electrode data into its custom structure
-        electrode_data = file_lcr.read(filename_electrode, n_samples, sweeptype=sweeptype, acquisition_mode=acquisition_mode, aggregate=aggregate, timezone=timezone)
+        electrode_data = file_lcr.read(filename_electrode, n_samples, electrode= electrode, acquisition_mode=acquisition_mode, aggregate=aggregate, timezone=timezone)
         self.Cp = electrode_data.Cp #capacitance
         self.Rp = electrode_data.Rp #resistance
-        self.Cp_agg = np.mean(electrode_data.Cp, axis=1)
-        self.Rp_agg = np.mean(electrode_data.Rp, axis=1)
+        self.Cp_agg = aggregate(electrode_data.Cp, axis=1)
+        self.Rp_agg = aggregate(electrode_data.Rp, axis=1)
         self.freqs = electrode_data.freqs #swept frequencies
         self.n_freqs = electrode_data.n_freqs #number of swept frequencies
         self.electrode_human_timestamps = electrode_data.human_timestamps #human timestamps
@@ -389,4 +391,46 @@ class PHOBOSData:
                 #aggregate the normalized signals over the modes
                 self.agg_Cp_norm[:,f] = aggregate(self.Cp_norm[:,:,f], axis=1)
                 self.agg_Rp_norm[:, f] = aggregate(self.Rp_norm[:, :, f], axis=1)
+
+
+class IAData:
+    def __init__(self, filename_electrode:str, filename_temperature=None, n_samples=1, normalize=False, temp_setup="freezer", electrode="flange", acquisition_mode="freq", aggregate=None, timezone=-3):
+        '''
+        :param filename_electrode: path where the .xls is stored
+        :param filename_temperature: path where the .csv is stored
+        :param n_samples: samples per pair swept
+        :param normalize: apply media-based normalization
+        :param temp_setup: define with type of test the data was taken from
+        :param electrode: which hardware was used to acquire the signals
+        :param acquisition_mode: how the data is expected to be organized ('flange' for 10-mode sweep or 'spectrum' for full spectroscopy)
+        :param aggregate: how to organize the data for each mode (None as default)
+        :param timezone: timezone to convert unix timestamp to human timestamp
+        '''
+
+        self.electrode_human_timestamps = None  # human timestamps
+        self.modes = None  # emitter/receiver modes
+        self.n_modes = 1  # number of emitter/receiver modes
+
+        #process electrode data into its custom structure
+        ia_obj = file_ia.read(filename_electrode)
+
+        self.freqs = ia_obj["1"].freqs  # swept frequencies
+        self.n_freqs = ia_obj["1"].n_freqs  # number of swept frequencies
+
+        Cp_list = []
+        Rp_list = []
+
+        for key, obj in ia_obj.items():
+
+            Cp_list.append(obj.Cp[None, None, :])
+            Rp_list.append(obj.Rp[None, None, :])
+
+        Cp_all = np.concatenate(Cp_list, axis=0)
+        Rp_all = np.concatenate(Rp_list, axis=0)
+
+        self.Cp =  Cp_all  # capacitance
+        self.Rp =  Rp_all  # resistance
+        self.Cp_agg = aggregate( Cp_all, axis=1)
+        self.Rp_agg = aggregate( Rp_all, axis=1)
+
 
