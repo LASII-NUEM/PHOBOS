@@ -5,7 +5,7 @@ matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 
 #PHOBOS spectroscopy acquisition
-spec_ice_obj = file_lcr.read('../data/testICE_12_12_25/cice.csv', n_samples=3, sweeptype="cell", acquisition_mode="spectrum", aggregate=np.mean)
+spec_ice_obj = file_lcr.read('../data/testICE_12_12_25/cice.csv', n_samples=3, electrode="cell", acquisition_mode="spectrum", aggregate=np.mean)
 
 #Impedance fitting
 fit_obj = fitting_utils.EquivalentCircuit("Longo2020", spec_ice_obj, spec_ice_obj.freqs) #quivalent circuit object

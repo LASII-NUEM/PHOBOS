@@ -11,8 +11,8 @@ def MSE(z_hat, z):
     return SSE/len(z_hat)
 
 # LCR spectroscopy acquisition
-LCR_spec_air_obj = file_lcr.read('../data/test_media_12_01/c0.csv', n_samples=3, sweeptype="cell", acquisition_mode="spectrum", aggregate=np.mean)
-LCR_spec_c1_obj = file_lcr.read('../data/test_media_12_01/tap.csv', n_samples=3, sweeptype="cell", acquisition_mode="spectrum", aggregate=np.mean)
+LCR_spec_air_obj = file_lcr.read('../data/test_media_12_01/c0.csv', n_samples=3, electrode="cell", acquisition_mode="spectrum", aggregate=np.mean)
+LCR_spec_c1_obj = file_lcr.read('../data/test_media_12_01/tap.csv', n_samples=3, electrode="cell", acquisition_mode="spectrum", aggregate=np.mean)
 
 #dielectric parameters
 c1_eps_real, c1_eps_imag = characterization_utils.dielectric_params_corrected(LCR_spec_c1_obj, LCR_spec_air_obj, LCR_spec_c1_obj.freqs) #compute the spectrum based on the experimental data

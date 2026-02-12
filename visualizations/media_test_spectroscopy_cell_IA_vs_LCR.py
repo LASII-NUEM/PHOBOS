@@ -14,11 +14,11 @@ spec_deionized_obj= spec_ia_obj["deionized"]
 # //----------------------------//
 
 # PHOBOS spectroscopy load acquisition
-lcr_spec_air_obj = file_lcr.read('../data/test_media_12_01/c0.csv', n_samples=3, sweeptype="cell", acquisition_mode="spectrum", aggregate=np.mean)
-lcr_spec_deionized_obj = file_lcr.read('../data/test_media_12_01/deionized.csv', n_samples=3, sweeptype="cell", acquisition_mode="spectrum", aggregate=np.mean)
-lcr_spec_distilled_obj = file_lcr.read('../data/test_media_12_01/distilled.csv', n_samples=3, sweeptype="cell", acquisition_mode="spectrum", aggregate=np.mean)
-lcr_spec_mineral_obj = file_lcr.read('../data/test_media_12_01/mineral.csv', n_samples=3, sweeptype="cell", acquisition_mode="spectrum", aggregate=np.mean)
-lcr_spec_tap_obj = file_lcr.read('../data/test_media_12_01/tap.csv', n_samples=3, sweeptype="cell", acquisition_mode="spectrum", aggregate=np.mean)
+lcr_spec_air_obj = file_lcr.read('../data/test_media_12_01/c0.csv', n_samples=3, electrode="cell", acquisition_mode="spectrum", aggregate=np.mean)
+lcr_spec_deionized_obj = file_lcr.read('../data/test_media_12_01/deionized.csv', n_samples=3, electrode="cell", acquisition_mode="spectrum", aggregate=np.mean)
+lcr_spec_distilled_obj = file_lcr.read('../data/test_media_12_01/distilled.csv', n_samples=3, electrode="cell", acquisition_mode="spectrum", aggregate=np.mean)
+lcr_spec_mineral_obj = file_lcr.read('../data/test_media_12_01/mineral.csv', n_samples=3, electrode="cell", acquisition_mode="spectrum", aggregate=np.mean)
+lcr_spec_tap_obj = file_lcr.read('../data/test_media_12_01/tap.csv', n_samples=3, electrode="cell", acquisition_mode="spectrum", aggregate=np.mean)
 
 ## //----------------------------//
 

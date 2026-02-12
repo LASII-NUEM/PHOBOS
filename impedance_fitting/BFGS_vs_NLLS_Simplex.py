@@ -5,7 +5,7 @@ matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 
 #PHOBOS spectroscopy acquisition
-spec_obj = file_lcr.read('../data/testICE_30_01_26/c_ice.csv', n_samples=3, sweeptype="cell", acquisition_mode="spectrum", aggregate=np.mean)
+spec_obj = file_lcr.read('../data/testICE_30_01_26/c_ice.csv', n_samples=3, electrode="cell", acquisition_mode="spectrum", aggregate=np.mean)
 freq_thresh = 100
 freq_mask = spec_obj.freqs >= freq_thresh
 spec_obj.freqs = spec_obj.freqs[freq_mask]
