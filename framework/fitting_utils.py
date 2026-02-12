@@ -42,6 +42,114 @@ class OptimizerResults:
         if t_elapsed is not None:
             self.t_elapsed = t_elapsed
 
+def NelderMeadSimplex(cost_fun, theta:np.ndarray, args=(), alfa=1, beta=2, gamma=0.5, step=0.05, tol=1e-8, max_iter=None, bounds=None, adaptative=False):
+    '''
+    :param cost_fun: pointer to the cost function of the minimization problem
+    :param theta: initial point for the simplex (P[0])
+    :param args: list with parameters that won't be minimized but are required to compute the cost
+    :param alfa: reflection coefficient
+    :param beta: expansion coefficient
+    :param gamma: contraction coefficient
+    :param step: step to generate the Simplex from P[0]
+    :param tol: tolerance of the algorithm for stop criteria (std(y) < tol)
+    :param max_iter: total allowed iterations of the algorithm
+    :param bounds: constraints of the problem
+    :param adaptative: flag to enable parameter adaptation to the dimension of the problem
+    :return the point at the simplex's vertex that minimized the cost
+    '''
+
+    #control variables of the algorithm
+    args = args[0] #expand the tuple to access the list
+    n = len(theta) #points that define the simplex
+    y_idx = np.arange(0,n+1,1) #indexes to extract l, h, and s
+
+    #handle 'max_iter'
+    if max_iter is None:
+        max_iter = n*200
+
+    #handle 'bounds'
+    if bounds is not None:
+        if isinstance(bounds, list):
+            bounds = np.array(bounds) #convert to numpy array
+            lower_bounds = bounds[:,0] #lower bounds for each parameter
+            upper_bounds = bounds[:,1] #uppper bounds for each parameter
+        else:
+            lower_bounds = bounds[:,0] #lower bounds for each parameter
+            upper_bounds = bounds[:,1] #uppper bounds for each parameter
+
+    #handle 'adaptative'
+    if adaptative:
+        alfa = 1
+        beta = 1+2/n
+        gamma = 0.75-1/(2*n)
+
+    #define the initial simplex
+    step_mtx = step*np.roll(np.eye(n+1,n),0) #matrix that defines the vertices
+    simplex = step_mtx + np.tile(theta[:,np.newaxis], n+1).T #apply the step
+
+    #nelder-mead simplex algorithm
+    iter = 0 #counter to monitor iterations
+    while True:
+        iter += 1 #update the iteration counter
+
+        #apply constraints if required
+        if bounds is not None:
+            simplex = np.clip(simplex, lower_bounds, upper_bounds)
+
+        y = cost_fun(simplex, args) #compute the cost at each vertex of the simplex
+
+        #stop criterion
+        delta = np.std(y)
+        if delta < tol:
+            break
+
+        h = np.argmax(y) #index of the maximum cost
+        yh = cost_fun(simplex[h,:][:,np.newaxis].T, args)
+        y_idx_nH = y_idx!=h #mask to ensure i!=h in the comparison
+        l = np.argmin(y) #index of the minimum cost
+        yl = cost_fun(simplex[l,:][:,np.newaxis].T, args) #update the cost at the lower bound
+        y_idx_cent = (y_idx!=h)&(y_idx!=l) #mask to detect second highest cost
+        P_cent = np.mean(simplex[y_idx_nH], axis=0) #compute the centroid without h
+        s = np.argmax(y[y_idx_cent]) #index of the second highest cost
+        y_s = cost_fun(simplex[s,:][:,np.newaxis].T, args)
+
+        #reflection
+        P_r = P_cent + alfa*(P_cent-simplex[h,:])
+        y_r = cost_fun(P_r[:,np.newaxis].T, args)
+
+        #expansion
+        if y_r < yl:
+            P_e = P_cent + beta*(P_r-P_cent)
+            y_e = cost_fun(P_e[:,np.newaxis].T, args)
+            if y_e < y_r:
+                simplex[h,:] = P_e
+            elif y_e >= y_r:
+                simplex[h,:] = P_r
+
+        #contraction
+        elif y_r >= y_s:
+            if y_r < y[h]:
+                simplex[h,:] = P_r
+
+            P_c = P_cent + gamma*(simplex[h,:]-P_cent)
+            y_c = cost_fun(P_c[:,np.newaxis].T, args)
+
+            if y_c > yh:
+                simplex[y_idx_cent,:] = 0.5*(simplex[y_idx_cent,:]+simplex[l, :])
+                y = cost_fun(simplex, args)
+
+            elif y_c <= yh:
+                simplex[h,:] = P_c
+        else:
+            simplex[h,:] = P_r
+
+        #iteration criteria
+        if iter == max_iter:
+            break
+
+    opt_vertex = np.argmin(y)
+    return simplex[opt_vertex,:]
+
 class EquivalentCircuit:
     def __init__(self, topology: str, data_medium:data_types.SpectroscopyData, freqs:np.ndarray):
         '''
@@ -91,7 +199,11 @@ class EquivalentCircuit:
         z_hat = self.circuit_impedance(theta, [args[1], args[2]]) #compute the model for the arguments
         z_hat = z_hat.astype('complex')
         args[0] = args[0].astype('complex')
-        SSE = np.sum(((args[0].real-z_hat.real)**2)+((args[0].imag-z_hat.imag)**2))
+        if z_hat.ndim >= 2:
+            z_hat = z_hat.T
+            SSE = np.sum(((args[0].real-z_hat.real)**2)+((args[0].imag-z_hat.imag)**2), axis=1)
+        else:
+            SSE = np.sum(((args[0].real-z_hat.real)**2) + ((args[0].imag-z_hat.imag)**2))
 
         return SSE / len(z_hat)
 
@@ -105,7 +217,7 @@ class EquivalentCircuit:
         '''
 
         #validate "method"
-        valid_methods = ['BFGS', 'NLLS']
+        valid_methods = ['BFGS', 'NLLS', 'Nelder-Mead']
         if method not in valid_methods:
             raise ValueError(f'[EquivalentCircuit] {method} not implemented! Try: {valid_methods}')
         self.fit_method = method
@@ -179,6 +291,30 @@ class EquivalentCircuit:
 
             return OptimizerResults(opt_params=fit_params_real, opt_params_scaled=opt_params_scaled,
                                     opt_fit=opt_fit, nmse_score=nmse, chi_square=chisqr, t_elapsed=t_elapsed) #return the optimized parameters
+
+        elif self.fit_method == "Nelder-Mead":
+            self.circuit_impedance = function_handlers[self.topology]["function_ptr"]
+            t_init = time.time()
+            fit_obj = NelderMeadSimplex(self.CUMSE, initial_guess, args=([self.z_meas, omega, scaling_array],), bounds=bounds)
+            t_elapsed = time.time() - t_init
+            opt_fit = self.circuit_impedance(fit_obj, [omega, scaling_array]) #compute the circuit for the optimal values
+            opt_params_scaled = fit_obj*scaling_array #rescale the minimized parameters
+            nmse = self.NMSE(self.z_meas.astype("complex"), opt_fit.astype("complex")) #NMSE score for both complex parts
+            chisqr = self.chi_square(self.z_meas.astype("complex"), opt_fit.astype("complex")) #chi-square score for both complex parts
+
+            if verbose:
+                print(f'[EquivalentCircuit] Nelder-Mead Simplex impedance fitting:')
+                print(f't = {t_elapsed} s')
+                print(f'NMSE = {nmse}')
+                print(f'chi-square = {chisqr}')
+                fit_params = function_handlers[self.topology]["fit_params"]
+                print(f'fitted params = ')
+                for i in range(len(fit_params)):
+                    print(f'{fit_params[i]} = {opt_params_scaled[i]}')
+                print()
+
+            return OptimizerResults(opt_params=fit_obj, opt_params_scaled=opt_params_scaled, opt_fit=opt_fit,
+                                    nmse_score=nmse, chi_square=chisqr, t_elapsed=t_elapsed) #return the optimized parameters
 
         else:
             raise ValueError(f'[EquivalentCircuit] method = {method} not implemented! Try: {valid_methods}')

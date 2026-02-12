@@ -6,12 +6,11 @@ import matplotlib.pyplot as plt
 
 #PHOBOS spectroscopy acquisition
 spec_ice_obj = file_lcr.read('../data/testICE_12_12_25/cice.csv', n_samples=3, sweeptype="cell", acquisition_mode="spectrum", aggregate=np.mean)
-spec_h2o_obj = file_lcr.read('../data/testICE_12_12_25/c1.csv', n_samples=3, sweeptype="cell", acquisition_mode="spectrum", aggregate=np.mean)
 
 #Impedance fitting
 fit_obj = fitting_utils.EquivalentCircuit("Longo2020", spec_ice_obj, spec_ice_obj.freqs) #quivalent circuit object
-initial_guess = np.array([1, 1, 1, 1, 10, 1, 1, 1])
-scaling_array = np.array([1e3, 1e-7, 1e6, 1e-2, 1e2, 1e-1, 1, 1])
+initial_guess = np.array([1, 1, 1, 1, 1, 1, 1, 1])
+scaling_array = np.array([1e3, 1e-7, 1e6, 1e-2, 1e4, 1e-1, 1, 1])
 fit_params = fit_obj.fit_circuit(initial_guess, scaling_array, method="BFGS")
 
 #plot

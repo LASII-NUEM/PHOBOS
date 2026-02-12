@@ -7,7 +7,13 @@ def Fouquet2005(theta, args):
     :return: impedance for the equivalent R - CPE || (R-Zws) circuit
     '''
 
-    #expand thetas into the components with scaling
+    # expand thetas into the components with scaling
+    if theta.ndim >= 2:
+        omega = args[0][:, np.newaxis] #rad/s
+    else:
+        theta = np.atleast_2d(theta)
+        omega = args[0] #rad/s
+
     theta = np.array(theta)*args[1] #scaling
     R1 = theta[0]
     R2 = theta[1]
@@ -17,7 +23,6 @@ def Fouquet2005(theta, args):
     taud = theta[5]
 
     #impedance computation
-    omega = args[0]  # rad/s
     Zws = (Rd*np.tanh((1j*omega*taud)**0.5))/((1j*omega*taud)** 0.5) #warburg short-finite impedance
     CPE = Q*((1j*omega)**n) #constant phase element
     Zb2_n = R2 + Zws #num. of the CPE || (R2 - Zws) block
@@ -63,18 +68,23 @@ def Longo2020(theta, args):
     '''
 
     #expand thetas into the components with scaling
+    if theta.ndim >= 2:
+        omega = args[0][:, np.newaxis] #rad/s
+    else:
+        theta = np.atleast_2d(theta)
+        omega = args[0] #rad/s
+
     theta = np.array(theta)*args[1] #scaling
-    R1 = theta[0]
-    tau1 = theta[1]
-    R2 = theta[2]
-    tau2 = theta[3]
-    R3 = theta[4]
-    tau3 = theta[5]
-    n3 = theta[6]
-    tau4 = theta[7]
+    R1 = theta[:,0]
+    tau1 = theta[:,1]
+    R2 = theta[:,2]
+    tau2 = theta[:,3]
+    R3 = theta[:,4]
+    tau3 = theta[:,5]
+    n3 = theta[:,6]
+    tau4 = theta[:,7]
 
     #impedance computation
-    omega = args[0] #rad/s
     Z_b1 = R1/(1+1j*omega*tau1) #p(R1,C1) block
     Z_b2n = R2 + (R3/(1+(1j*omega*tau3)**n3)) #num of the p(C2, R2-p(R3, CPE)) block
     Z_b2d = 1 + 1j*omega*tau2 + (1j*omega*tau4)/(1 + (1j*omega*tau3)**n3) #den of the p(C2, R2-p(R3, CPE)) block
@@ -120,6 +130,12 @@ def Zurich2021(theta, args):
     '''
 
     #expand thetas into the components with scaling
+    if theta.ndim >= 2:
+        omega = args[0][:, np.newaxis] #rad/s
+    else:
+        theta = np.atleast_2d(theta)
+        omega = args[0] #rad/s
+
     theta = np.array(theta)*args[1] #scaling
     R1 = theta[0]
     Q = theta[1]
@@ -131,7 +147,6 @@ def Zurich2021(theta, args):
     C = theta[5]
 
     #impedance computation
-    omega = args[0] #rad/s
     #Zws = (Rd*np.tanh((1j*omega*taud)**0.5))/((1j*omega*taud)** 0.5) #warburg short-finite impedance
     CPE = Q*((1j*omega)**n) #constant phase element
     Z_b2_d = 1 + CPE*Zws #den. of the CPE||Zws block
@@ -181,6 +196,12 @@ def Hong2021(theta, args):
     '''
 
     #expand thetas into the components with scaling
+    if theta.ndim >= 2:
+        omega = args[0][:, np.newaxis] #rad/s
+    else:
+        theta = np.atleast_2d(theta)
+        omega = args[0] #rad/s
+
     theta = np.array(theta) * args[1] #scaling
     R1 = theta[0]
     Q1 = theta[1]
@@ -191,7 +212,6 @@ def Hong2021(theta, args):
     R3 = theta[6]
 
     #impedance computation
-    omega = args[0] #rad/s
     CPE1 = Q1*((1j*omega)**n1) #constant phase element
     CPE2 = Q2*((1j * omega)**n2) #constant phase element
     Z_b2_num = R2 + (R3/(1 + R3*CPE2)) #num. of the CPE || (R - CPE||R) block
@@ -238,6 +258,12 @@ def Awayssa2025(theta, args):
     '''
 
     #expand thetas into the components with scaling
+    if theta.ndim >= 2:
+        omega = args[0][:, np.newaxis] #rad/s
+    else:
+        theta = np.atleast_2d(theta)
+        omega = args[0] #rad/s
+
     theta = np.array(theta)*args[1] #scaling
     R1 = theta[0]
     R2 = theta[1]
@@ -246,7 +272,6 @@ def Awayssa2025(theta, args):
     C2 = theta[4]
 
     #impedance computation
-    omega = args[0] #rad/s
     tau2 = 1j*omega*R2*C1 #j2R2C1
     induct_imp = 1j*omega*L1 #impedance of the inductor
     Z_num = R1 + R2 + tau2*(R1 + induct_imp) + induct_imp #num. of the impedance equivalent circuit
@@ -289,6 +314,12 @@ def Yang2025(theta, args):
     '''
 
     #expand thetas into the components with scaling
+    if theta.ndim >= 2:
+        omega = args[0][:, np.newaxis] #rad/s
+    else:
+        theta = np.atleast_2d(theta)
+        omega = args[0] #rad/s
+
     theta = np.array(theta)*args[1] #scaling
     R1 = theta[0]
     R2 = theta[1]
@@ -299,7 +330,6 @@ def Yang2025(theta, args):
     #Zws = theta[3]
 
     #impedance computation
-    omega = args[0] #rad/s
     Zws = (Rd*np.tanh((1j*omega*taud)**0.5))/((1j*omega*taud)** 0.5) #warburg short-finite impedance
     CPE = Q*((1j*omega)**n) #constant phase element
     Z_b2_d = 1 + R2*CPE #den. of the CPE||Zws block
@@ -341,6 +371,12 @@ def Zhang2024(theta, args):
     '''
 
     #expand thetas into the components with scaling
+    if theta.ndim >= 2:
+        omega = args[0][:, np.newaxis] #rad/s
+    else:
+        theta = np.atleast_2d(theta)
+        omega = args[0] #rad/s
+
     theta = np.array(theta)*args[1] #scaling
     Q = theta[0]
     n = theta[1]
@@ -350,7 +386,6 @@ def Zhang2024(theta, args):
     taud = theta[5]
 
     #impedance computation
-    omega = args[0] #rad/s
     Zws = (Rd*np.tanh((1j*omega*taud)**0.5))/((1j*omega*taud)** 0.5) #warburg short-finite impedance
     CPE = Q*((1j*omega)**n) #constant phase element
     Z_b1_n = R2*(1+CPE) #num. of the first block
