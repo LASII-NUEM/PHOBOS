@@ -1,8 +1,11 @@
 import numpy as np
-from framework import file_lcr, characterization_utils, fitting_utils, data_types
+from numpy.ma.core import empty
+
+from framework import file_lcr, file_ia, characterization_utils, fitting_utils, data_types
 import pickle
 import os
 import time
+from pathlib import Path
 
 class MediumData:
     def __init__(self, topology:dict, data_medium:data_types.SpectroscopyData, data_air:data_types.SpectroscopyData, media:str, eps_func=characterization_utils.dielectric_params_generic):
@@ -81,6 +84,9 @@ class MediumData:
                 curr_fit_params_BFGS = curr_fit_obj.fit_circuit(curr_fit_attributes["guess"], curr_fit_attributes["scale"], method="BFGS")
                 z_hat_real_BFGS = curr_fit_params_BFGS.opt_fit.real #real part of the fitting
                 z_hat_imag_BFGS = curr_fit_params_BFGS.opt_fit.imag #imaginary part of the fitting
+                if z_hat_imag_BFGS.ndim ==1:
+                    z_hat_imag_BFGS = z_hat_imag_BFGS.reshape(len(freqs), self.media_obj.n_modes)
+                    z_hat_real_BFGS = z_hat_real_BFGS.reshape(len(freqs), self.media_obj.n_modes)
                 nmse_BFGS = curr_fit_params_BFGS.nmse_score
                 params_BFGS = curr_fit_params_BFGS.opt_params_scaled
                 t_BFGS = curr_fit_params_BFGS.t_elapsed
@@ -91,67 +97,108 @@ class MediumData:
                     curr_fit_params_NLLS = curr_fit_obj.fit_circuit(curr_fit_attributes["guess"], curr_fit_attributes["scale"], method="NLLS")
                     z_hat_real_NLLS = curr_fit_params_NLLS.opt_fit.real
                     z_hat_imag_NLLS = curr_fit_params_NLLS.opt_fit.imag
+                    if z_hat_imag_NLLS.ndim == 1:
+                        z_hat_imag_NLLS = z_hat_imag_NLLS.reshape(len(freqs), self.media_obj.n_modes)
+                        z_hat_real_NLLS = z_hat_real_NLLS.reshape(len(freqs), self.media_obj.n_modes)
                     nmse_NLLS = curr_fit_params_NLLS.nmse_score
                     params_NLLS = curr_fit_params_NLLS.opt_params_scaled
                     t_NLLS = curr_fit_params_NLLS.t_elapsed
                 except:
-                    z_hat_real_NLLS = np.zeros(shape=(len(self.z_real), 1, len(freqs)))
-                    z_hat_imag_NLLS = np.zeros(shape=(len(self.z_imag), 1, len(freqs)))
+                    z_hat_real_NLLS = np.zeros(shape=(len(self.z_real), self.media_obj.n_modes))
+                    z_hat_imag_NLLS = np.zeros(shape=(len(self.z_imag), self.media_obj.n_modes))
                     nmse_NLLS = 1
                     params_NLLS = np.zeros_like(params_BFGS)
                     t_NLLS = None
 
                 #store the optimization parameters into the fit dictionary
-                fitted_circuits[circuit]["z_hat_real"] = np.vstack((z_hat_real_BFGS, z_hat_real_NLLS)).T
-                fitted_circuits[circuit]["z_hat_imag"] = np.vstack((z_hat_imag_BFGS, z_hat_imag_NLLS)).T
+                fitted_circuits[circuit]["z_hat_real"] = np.hstack((z_hat_real_BFGS, z_hat_real_NLLS))
+                fitted_circuits[circuit]["z_hat_imag"] = np.hstack((z_hat_imag_BFGS, z_hat_imag_NLLS))
                 fitted_circuits[circuit]["nmse"] = np.vstack((nmse_BFGS, nmse_NLLS)).T
                 fitted_circuits[circuit]["params"] = np.vstack((params_BFGS, params_NLLS)).T
                 fitted_circuits[circuit]["t"] = np.vstack((t_BFGS, t_NLLS)).T
 
         return fitted_circuits
 
-class BatchLCR:
-    def __init__(self, base_path, topology:dict, freq_threshold=None, n_samples_freq=1, n_samples_spectrum=3, sweeptype="cell", aggregate=None, eps_func=characterization_utils.dielectric_params_generic, timezone=-3):
+class BatchData:
+    def __init__(self, base_path, topology:dict, freq_threshold=None, n_samples_freq=1, n_samples_spectrum=3, electrode="cell", hardware = "LCR", aggregate=None, eps_func=characterization_utils.dielectric_params_generic, timezone=-3):
         '''
         :param base_path: base path where all .csv files are stored
         :param topology: list of equivalent circuits to fit the data
         :param freq_threshold: value to filter frequencies from (i.e., 100 filters from 100 Hz. OBS: None to skip filtering)
         :param n_samples_freq: samples per freerun sweep
         :param n_samples_spectrum: samples per EIS sweep
-        :param sweeptype: which hardware was used to acquire the signals
+        :param electrode: which hardware Cell was used to test
+        :param hardware: which hardware Equipment was used to test
         :param aggregate: how to organize the data for each mode (None as default)
         :param timezone: timezone to convert unix timestamp to human timestamp
         '''
 
         #validate 'base_path' argument
         if not os.path.exists(base_path):
-            raise FileNotFoundError(f'[BatchLCR] Base path {base_path} does not exist!')
+            raise FileNotFoundError(f'[BatchData] Base path {base_path} does not exist!')
 
         #validate 'topology'
         if not isinstance(topology, dict):
-            raise TypeError(f'[BatchLCR] "topology" must be a dictionary!')
+            raise TypeError(f'[BatchData] "topology" must be a dictionary!')
 
         #validate 'freq_threshold'
         if not freq_threshold is None:
             if isinstance(freq_threshold, float) or isinstance(freq_threshold, int):
                 if not freq_threshold >= 0:
-                    raise ValueError(f'[BatchLCR] Frequency threshold cannot be smaller than zero!')
+                    raise ValueError(f'[BatchData] Frequency threshold cannot be smaller than zero!')
             else:
-                raise TypeError(f'[BatchLCR] Frequency threshold must be an integer or float!')
+                raise TypeError(f'[BatchData] Frequency threshold must be an integer or float!')
 
-        #process reference sweeps into SpectroscopyData objects
-        lcr_files = [found_file for found_file in os.listdir(base_path) if found_file.endswith('.csv')] #list all LCR-based files prior to processing
-        spec_objects = {"c0": None, "c1": None, "cice": None, "cthf": None, "ctest": None} #attribute the objects to sweep-based keys
+        # validate electrode
+        electrodetype = electrode.lower()  # convert to lowercase
+        valid_electrodes= ['flange', 'cell', 'custom']  # list of valid sweep types
+        if electrodetype not in valid_electrodes:
+            raise ValueError(f'[BatchData] electrode type = {electrodetype} not implemented! Try: {valid_electrodes}')
 
-        for lcr_file in lcr_files:
-            filepath = os.path.join(base_path, lcr_file) #relative path of the EIS sweep
+        hardware = hardware.lower()  # convert to lowercase
+        valid_hardware = ['lcr', 'ia']  # list of valid sweep types
+        if hardware not in valid_hardware:
+            raise ValueError(f'[BatchData] hardware = {hardware} not implemented! Try: {valid_hardware}')
+
+        if hardware == "lcr":
+            #process reference sweeps into SpectroscopyData objects
+            lcr_files = [found_file for found_file in os.listdir(base_path) if found_file.endswith('.csv')] #list all LCR-based files prior to processing
+            spec_objects = {"c0": None, "c1": None, "cice": None, "cthf": None, "ctest": None} #attribute the objects to sweep-based keys
+            if len(lcr_files) == 0 :
+                raise ValueError(f'[BatchData] There is no (.csv) file in the {base_path} directory!')
+        elif hardware == "ia":
+            #process reference sweeps into SpectroscopyData objects
+            ia_files = [found_file for found_file in os.listdir(base_path) if found_file.endswith('.xls')] #list all IA-based files prior to processing
+            spec_objects = {"spectrum": None, "ctest": None, "cthf": None} #attribute the objects to sweep-based keys
+            if len(ia_files) == 0:
+                raise ValueError(f'[BatchData] There is no (.xls) file in the {base_path} directory!')
+        else:
+            raise ValueError(f'[BatchData] There is no file in the {base_path} directory!')
+
+        files_to_process = lcr_files if hardware == "lcr" else ia_files
+
+        for data_file in files_to_process:
+
+            if "Temp" in  data_file:
+                continue
+
+            filepath = os.path.join(base_path, data_file) #relative path of the EIS sweep
             try:
-                eis_obj_key = lcr_file.replace('.csv', '') #key to extract the SpectroscopyData object and run the constructor
+                eis_obj_key = Path(data_file).stem #key to extract the SpectroscopyData object and run the constructor
                 eis_obj_key = eis_obj_key.replace('_', '') #remove underline to access the attributes
-                if "test" in lcr_file:
-                    placeholder_temp_file = os.path.join(base_path, "c_temp.lvm")
-                    spec_objects[eis_obj_key] = data_types.PHOBOSData(filepath, filename_temperature=placeholder_temp_file,
-                                                                      n_samples=n_samples_freq, sweeptype=sweeptype, acquisition_mode="freq", aggregate=aggregate) #constructor of the PHOBOSData object
+
+                if eis_obj_key == "ctest":
+                    if hardware == "lcr" and electrode == "flange":
+                        placeholder_temp_file = os.path.join(base_path, "c_temp.lvm")
+                        spec_objects[eis_obj_key] = data_types.PHOBOSData(filepath, filename_temperature=placeholder_temp_file, n_samples=n_samples_freq, electrode=electrode, acquisition_mode="freq", aggregate=aggregate) #constructor of the PHOBOSData object
+
+                    elif hardware == "lcr" and electrode == "cell": #implement ctest for LCR and commercial cell
+                        # temperature for commercial cell is a .csv file (edit file_lvm to accept .csv temperature file)
+                        spec_objects[eis_obj_key] = data_types.PHOBOSData(filepath, n_samples=n_samples_freq, electrode=electrode, acquisition_mode="freq", aggregate=aggregate) #constructor of the PHOBOSData object
+
+                    elif hardware == "ia" and electrode == "cell": #implement ctest for IA and commercial cell
+                        # temperature for commercial cell is a .csv file (edit file_lvm to accept .csv temperature file)
+                        spec_objects[eis_obj_key] = data_types.IAData(filepath, n_samples=n_samples_freq, electrode=electrode, acquisition_mode="freq", aggregate=aggregate)
 
                     #filter frequency threshold
                     if freq_threshold:
@@ -171,7 +218,21 @@ class BatchLCR:
                             spec_objects[eis_obj_key].Rp_agg = spec_objects[eis_obj_key].Rp_agg[:,freq_mask] #filter aggregated resistance
                             spec_objects[eis_obj_key].agg_Rp_norm = spec_objects[eis_obj_key].agg_Rp_norm[:,freq_mask] #filter aggregated normalized resistance
                 else:
-                    spec_objects[eis_obj_key] = file_lcr.read(filepath, n_samples=n_samples_spectrum, sweeptype=sweeptype, acquisition_mode="spectrum", aggregate=aggregate, timezone=timezone) #SpectroscopyData object for current EIS file
+
+                    if hardware == "lcr" and electrode == "flange":
+                        spec_objects[eis_obj_key] = file_lcr.read(filepath, n_samples=1, electrode="flange", acquisition_mode="freq", aggregate=np.mean, timezone=timezone) # SpectroscopyData object for current EIS file
+
+                    elif hardware == "lcr" and electrode == "cell":  # implement ctest for LCR and commercial cell
+                        spec_objects[eis_obj_key] = file_lcr.read(filepath, n_samples=n_samples_spectrum,
+                                                                  electrode=electrode, acquisition_mode="spectrum",
+                                                                  aggregate=aggregate,
+                                                                  timezone=timezone)  # SpectroscopyData object for current EIS file
+
+                    elif hardware == "ia" and electrode == "cell":  # implement ctest for IA and commercial cell
+                        ia_obj = file_ia.read(filepath)
+                        spec_objects["c0"] = ia_obj["c0"]
+                        spec_objects["c1"] = ia_obj["c1"]
+                        spec_objects["cice"] = ia_obj["cice"]
 
                     #filter frequency threshold
                     if freq_threshold:
@@ -182,69 +243,77 @@ class BatchLCR:
                         spec_objects[eis_obj_key].Rp = spec_objects[eis_obj_key].Rp[freq_mask] #filter resistance
 
             except Exception as e:
-                print(f'[BatchLCR] Failed "{filepath}" with {e}! Processing data without it...')
+                print(f'[BatchData] Failed "{filepath}" with {e}! Processing data without it...')
 
         #attribute each processed SpectroscopyData object to their equivalent MediumData object
         if spec_objects["c0"] is not None:
             self.spec_air_obj = spec_objects["c0"] #object to store air EIS data
-            if spec_objects["c1"] is not None:
-                self.spec_h2o_obj = MediumData(topology, spec_objects["c1"], spec_objects["c0"], "water", eps_func=eps_func) #object to store water EIS data
-            if spec_objects["cice"] is not None:
-                self.spec_ice_obj = MediumData(topology, spec_objects["cice"], spec_objects["c0"],"ice", eps_func=eps_func) #object to store ice EIS data
-            if spec_objects["cthf"] is not None: #TODO: test later with THF (once the data exists)
-                self.spec_thf_obj = MediumData(topology, spec_objects["cthf"], spec_objects["c0"],"thf", eps_func=eps_func) #object to store ice EIS data
-            if spec_objects["ctest"] is not None:
-                self.freerun_obj = spec_objects["ctest"] #object to store freerun sweep data
-
-class BatchIA:
-    def __init__(self):
-        #TODO: repeat the BatchLCR routine to BatchIA
-        self.data = None
+        if spec_objects["c1"] is not None:
+            self.spec_h2o_obj = MediumData(topology, spec_objects["c1"], spec_objects["c0"], "water", eps_func=eps_func) #object to store water EIS data
+        if spec_objects["cice"] is not None:
+            self.spec_ice_obj = MediumData(topology, spec_objects["cice"], spec_objects["c0"],"ice", eps_func=eps_func) #object to store ice EIS data
+        if spec_objects["cthf"] is not None: #TODO: test later with THF (once the data exists)
+            self.spec_thf_obj = MediumData(topology, spec_objects["cthf"], spec_objects["c0"],"thf", eps_func=eps_func) #object to store ice EIS data
+        if spec_objects["ctest"] is not None:
+            self.freerun_obj = spec_objects["ctest"] #object to store freerun sweep data
 
 class BatchOrganizer:
-    def __init__(self, base_path, circuits:dict, freq_threshold=None, n_samples_freq=1, n_samples_spectrum=3, sweeptype="cell", aggregate=None, eps_func=characterization_utils.dielectric_params_generic, timezone=-3, save=True):
+    def __init__(self, base_path, circuits:dict, freq_threshold=None, n_samples_freq=1, n_samples_spectrum=3, electrode="cell", hardware = "lcr", aggregate=None, eps_func=characterization_utils.dielectric_params_generic, timezone=-3, save=True):
         '''
         :param base_path: base path where all .csv files are stored
         :param circuits: list of equivalent circuits to fit the data
         :param freq_threshold: value to filter frequencies from (i.e., 100 filters from 100 Hz. OBS: None to skip filtering)
         :param n_samples_freq: samples per freerun sweep
         :param n_samples_spectrum: samples per EIS sweep
-        :param sweeptype: which hardware was used to acquire the signals
+        :param electrode: which hardware cell was used on the test
+        :param hardware: which hardware equipament was used on the test
         :param aggregate: how to organize the data for each mode (None as default)
         :param timezone: timezone to convert unix timestamp to human timestamp
         :param save: flag to enable pickle dumping
         '''
 
-        try:
-            self.lcr_obj = BatchLCR(base_path, circuits, freq_threshold=freq_threshold,
-                                    n_samples_freq=n_samples_freq, n_samples_spectrum=n_samples_spectrum, sweeptype=sweeptype,
-                                    aggregate=aggregate, eps_func=eps_func, timezone=timezone) #process the batch for LCR data
-            print(f'[BatchOrganizer] LCR batch processing finished!')
-        except:
-            print(f'[BatchOrganizer] LCR batch processing failed! Processing data without it...')
+        hardware = hardware.lower()  # convert to lowercase
+        valid_hardware = ['lcr', 'ia']  # list of valid sweep types
+        if hardware not in valid_hardware:
+            raise ValueError(f'[BatchOrganizer] hardware = {hardware} not implemented! Try: {valid_hardware}')
 
-        try:
-            self.ia_obj = BatchIA() #TODO: process the batch data for IA data
+        if hardware == "lcr":
+            try:
+                self.lcr_obj = BatchData(base_path, circuits, freq_threshold=freq_threshold,
+                                        n_samples_freq=n_samples_freq, n_samples_spectrum=n_samples_spectrum, electrode=electrode, hardware=hardware,
+                                        aggregate=aggregate, eps_func=eps_func, timezone=timezone) #process the batch for LCR data
+                print(f'[BatchOrganizer] LCR batch processing finished!')
+            except:
+                print(f'[BatchOrganizer] LCR batch processing failed! Processing data without it...')
+
+        elif hardware == "ia":
+            # try:
+            self.ia_obj = BatchData(base_path, circuits, freq_threshold=freq_threshold,
+                                    n_samples_freq=n_samples_freq, n_samples_spectrum=n_samples_spectrum, electrode=electrode, hardware=hardware,
+                                    aggregate=aggregate, eps_func=eps_func, timezone=timezone) #process the batch for LCR data
             print(f'[BatchOrganizer] IA batch processing finished!')
-        except:
-            print(f'[BatchOrganizer] IA batch processing failed! Processing data without it...')
+
+            # except Exception as e:
+            #     print(f'[BatchOrganizer] IA batch processing failed with {e}! Processing data without it...')
+        else:
+            raise ValueError(f'[BatchOrganizer] There is none of the supported hardware {hardware}!')
 
         #if True, save the attributes as a pickle file
         if save:
-            pickle_file = f"batch_{base_path.split('/')[-1]}.pkl"
+            pickle_file = f"{Path(base_path).stem}.pkl"
             self.full_relative_path = os.path.join(base_path, pickle_file)
             with open(self.full_relative_path, 'wb') as handle:
                 pickle.dump(self, handle, protocol=pickle.HIGHEST_PROTOCOL)
             print(f'[BatchOrganizer] Batch processing output saved at: {self.full_relative_path}')
 
 class BatchImpedanceFit:
-    def __init__(self, filename, circuits:dict, freq_threshold=None, n_samples=1, sweeptype="cell", aggregate=None, timezone=-3, save=True):
+    def __init__(self, filename, circuits:dict, freq_threshold=None, n_samples=1, electrode="cell", aggregate=None, timezone=-3, save=True):
         '''
         :param filename: name of the .csv file with
         :param circuits: list of equivalent circuits to fit the data
         :param freq_threshold: value to filter frequencies from (i.e., 100 filters from 100 Hz. OBS: None to skip filtering)
         :param n_samples: samples per EIS sweep
-        :param sweeptype: which hardware was used to acquire the signals
+        :param electrode: which hardware was used to acquire the signals
         :param aggregate: how to organize the data for each mode (None as default)
         :param timezone: timezone to convert unix timestamp to human timestamp
         :param save: flag to enable pickle dumping
@@ -267,7 +336,7 @@ class BatchImpedanceFit:
                 raise TypeError(f'[BatchImpedanceFit] Frequency threshold must be an integer or float!')
 
         self.circuits = circuits
-        self.media_obj = file_lcr.read(filename, n_samples=n_samples, sweeptype=sweeptype, acquisition_mode="freq", aggregate=aggregate, timezone=timezone)
+        self.media_obj = file_lcr.read(filename, n_samples=n_samples, electrode=electrode, acquisition_mode="freq", aggregate=aggregate, timezone=timezone)
 
         #filter frequency threshold
         if freq_threshold:
