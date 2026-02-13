@@ -110,12 +110,23 @@ class MediumData:
                     params_NLLS = np.zeros_like(params_BFGS)
                     t_NLLS = None
 
+                # fit using the Nelder-Mead Simplex method
+                curr_fit_params_simplex = curr_fit_obj.fit_circuit(curr_fit_attributes["guess"], curr_fit_attributes["scale"], method="Nelder-Mead")
+                z_hat_real_simplex = curr_fit_params_simplex.opt_fit.real #real part of the fitting
+                z_hat_imag_simplex = curr_fit_params_simplex.opt_fit.imag #imaginary part of the fitting
+                if z_hat_imag_simplex.ndim == 1:
+                    z_hat_imag_simplex = z_hat_imag_simplex.reshape(len(freqs), self.media_obj.n_modes)
+                    z_hat_real_simplex = z_hat_real_simplex.reshape(len(freqs), self.media_obj.n_modes)
+                params_NLLS = curr_fit_params_simplex.opt_params_scaled
+                nmse_simplex = curr_fit_params_simplex.nmse_score
+                t_simplex = curr_fit_params_simplex.t_elapsed
+
                 #store the optimization parameters into the fit dictionary
-                fitted_circuits[circuit]["z_hat_real"] = np.hstack((z_hat_real_BFGS, z_hat_real_NLLS))
-                fitted_circuits[circuit]["z_hat_imag"] = np.hstack((z_hat_imag_BFGS, z_hat_imag_NLLS))
-                fitted_circuits[circuit]["nmse"] = np.vstack((nmse_BFGS, nmse_NLLS)).T
-                fitted_circuits[circuit]["params"] = np.vstack((params_BFGS, params_NLLS)).T
-                fitted_circuits[circuit]["t"] = np.vstack((t_BFGS, t_NLLS)).T
+                fitted_circuits[circuit]["z_hat_real"] = np.hstack((z_hat_real_BFGS, z_hat_real_NLLS, z_hat_real_simplex))
+                fitted_circuits[circuit]["z_hat_imag"] = np.hstack((z_hat_imag_BFGS, z_hat_imag_NLLS, z_hat_imag_simplex))
+                fitted_circuits[circuit]["nmse"] = np.vstack((nmse_BFGS, nmse_NLLS, nmse_simplex)).T
+                fitted_circuits[circuit]["params"] = np.vstack((params_BFGS, params_NLLS, params_NLLS)).T
+                fitted_circuits[circuit]["t"] = np.vstack((t_BFGS, t_NLLS, t_simplex)).T
 
         return fitted_circuits
 
@@ -179,10 +190,11 @@ class BatchData:
 
         for data_file in files_to_process:
 
-            if "Temp" in  data_file:
+            if "Temp" in data_file:
                 continue
 
             filepath = os.path.join(base_path, data_file) #relative path of the EIS sweep
+
             try:
                 eis_obj_key = Path(data_file).stem #key to extract the SpectroscopyData object and run the constructor
                 eis_obj_key = eis_obj_key.replace('_', '') #remove underline to access the attributes
@@ -252,7 +264,7 @@ class BatchData:
             self.spec_h2o_obj = MediumData(topology, spec_objects["c1"], spec_objects["c0"], "water", eps_func=eps_func) #object to store water EIS data
         if spec_objects["cice"] is not None:
             self.spec_ice_obj = MediumData(topology, spec_objects["cice"], spec_objects["c0"],"ice", eps_func=eps_func) #object to store ice EIS data
-        if spec_objects["cthf"] is not None: #TODO: test later with THF (once the data exists)
+        if spec_objects["cthf"] is not None:
             self.spec_thf_obj = MediumData(topology, spec_objects["cthf"], spec_objects["c0"],"thf", eps_func=eps_func) #object to store ice EIS data
         if spec_objects["ctest"] is not None:
             self.freerun_obj = spec_objects["ctest"] #object to store freerun sweep data
@@ -278,33 +290,35 @@ class BatchOrganizer:
             raise ValueError(f'[BatchOrganizer] hardware = {hardware} not implemented! Try: {valid_hardware}')
 
         if hardware == "lcr":
-            try:
-                self.lcr_obj = BatchData(base_path, circuits, freq_threshold=freq_threshold,
+            #try:
+            self.lcr_obj = BatchData(base_path, circuits, freq_threshold=freq_threshold,
                                         n_samples_freq=n_samples_freq, n_samples_spectrum=n_samples_spectrum, electrode=electrode, hardware=hardware,
                                         aggregate=aggregate, eps_func=eps_func, timezone=timezone) #process the batch for LCR data
-                print(f'[BatchOrganizer] LCR batch processing finished!')
-            except:
-                print(f'[BatchOrganizer] LCR batch processing failed! Processing data without it...')
+            #    print(f'[BatchOrganizer] LCR batch processing finished!')
+            #except Exception as e:
+            #    print(f'[BatchOrganizer] LCR batch processing failed with {e}! Processing data without it...')
 
         elif hardware == "ia":
-            # try:
-            self.ia_obj = BatchData(base_path, circuits, freq_threshold=freq_threshold,
-                                    n_samples_freq=n_samples_freq, n_samples_spectrum=n_samples_spectrum, electrode=electrode, hardware=hardware,
-                                    aggregate=aggregate, eps_func=eps_func, timezone=timezone) #process the batch for LCR data
-            print(f'[BatchOrganizer] IA batch processing finished!')
-
-            # except Exception as e:
-            #     print(f'[BatchOrganizer] IA batch processing failed with {e}! Processing data without it...')
+            try:
+                self.ia_obj = BatchData(base_path, circuits, freq_threshold=freq_threshold,
+                                        n_samples_freq=n_samples_freq, n_samples_spectrum=n_samples_spectrum, electrode=electrode, hardware=hardware,
+                                        aggregate=aggregate, eps_func=eps_func, timezone=timezone) #process the batch for LCR data
+                print(f'[BatchOrganizer] IA batch processing finished!')
+            except Exception as e:
+                print(f'[BatchOrganizer] IA batch processing failed with {e}! Processing data without it...')
         else:
             raise ValueError(f'[BatchOrganizer] There is none of the supported hardware {hardware}!')
 
         #if True, save the attributes as a pickle file
         if save:
-            pickle_file = f"{Path(base_path).stem}.pkl"
-            self.full_relative_path = os.path.join(base_path, pickle_file)
-            with open(self.full_relative_path, 'wb') as handle:
-                pickle.dump(self, handle, protocol=pickle.HIGHEST_PROTOCOL)
-            print(f'[BatchOrganizer] Batch processing output saved at: {self.full_relative_path}')
+            try:
+                pickle_file = f"{Path(base_path).stem}.pkl"
+                self.full_relative_path = os.path.join(base_path, pickle_file)
+                with open(self.full_relative_path, 'wb') as handle:
+                    pickle.dump(self, handle, protocol=pickle.HIGHEST_PROTOCOL)
+                print(f'[BatchOrganizer] Batch processing output saved at: {self.full_relative_path}')
+            except Exception as e:
+                print(f'[BatchOrganizer] Failed to save batch processing output with {e}!')
 
 class BatchImpedanceFit:
     def __init__(self, filename, circuits:dict, freq_threshold=None, n_samples=1, electrode="cell", aggregate=None, timezone=-3, save=True):
@@ -368,10 +382,10 @@ class BatchImpedanceFit:
                                             "chi_square_KK": np.zeros(shape=(n_samples,)),
                                             "M_KK": np.zeros(shape=(n_samples,)),
                                             "status_KK": np.zeros(shape=(n_samples,), dtype=bool),
-                                            "z_hat_real": np.zeros(shape=(n_samples, n_freqs, 2)),
-                                            "z_hat_imag": np.zeros(shape=(n_samples, n_freqs, 2)),
-                                            "nmse": np.zeros(shape=(n_samples, 2)),
-                                            "t": np.zeros(shape=(n_samples, 2))})
+                                            "z_hat_real": np.zeros(shape=(n_samples, n_freqs, 3)),
+                                            "z_hat_imag": np.zeros(shape=(n_samples, n_freqs, 3)),
+                                            "nmse": np.zeros(shape=(n_samples, 3)),
+                                            "t": np.zeros(shape=(n_samples, 3))})
                                             for circ_name in list(circuits.keys())) #dictionary to store fitted circuits parameters and values to a dictionary
 
         #process each sample separately
@@ -412,6 +426,14 @@ class BatchImpedanceFit:
                     nmse_NLLS = 1
                     t_NLLS = None
 
+                #fit using the Nelder-Mead Simplex method
+                curr_fit_params_simplex = curr_fit_obj.fit_circuit(curr_fit_attributes["guess"],  curr_fit_attributes["scale"], method="Nelder-Mead")
+                z_hat_real_simplex = curr_fit_params_simplex.opt_fit.real #real part of the fitting
+                z_hat_imag_simplex = curr_fit_params_simplex.opt_fit.imag #imaginary part of the fitting
+                nmse_simplex = curr_fit_params_simplex.nmse_score
+                t_simplex = curr_fit_params_simplex.t_elapsed
+
+
                 #attribute the computed values to the circuit key at the fit circuit dictionary
                 fitted_circuits[circuit]["z_meas_real"][i,:] = curr_z_real
                 fitted_circuits[circuit]["z_meas_imag"][i,:] = curr_z_imag
@@ -420,9 +442,9 @@ class BatchImpedanceFit:
                 fitted_circuits[circuit]["chi_square_KK"][i] = linKK_obj.chi_square
                 fitted_circuits[circuit]["M_KK"][i] = linKK_obj.fit_components
                 fitted_circuits[circuit]["status_KK"][i] = status
-                fitted_circuits[circuit]["z_hat_real"][i,:,:] = np.vstack((z_hat_real_BFGS, z_hat_real_NLLS)).T
-                fitted_circuits[circuit]["z_hat_imag"][i,:,:] = np.vstack((z_hat_imag_BFGS, z_hat_imag_NLLS)).T
-                fitted_circuits[circuit]["nmse"][i,:] = np.vstack((nmse_BFGS, nmse_NLLS)).T
-                fitted_circuits[circuit]["t"][i,:] = np.vstack((t_BFGS, t_NLLS)).T
+                fitted_circuits[circuit]["z_hat_real"][i,:,:] = np.vstack((z_hat_real_BFGS, z_hat_real_NLLS, z_hat_real_simplex)).T
+                fitted_circuits[circuit]["z_hat_imag"][i,:,:] = np.vstack((z_hat_imag_BFGS, z_hat_imag_NLLS, z_hat_imag_simplex)).T
+                fitted_circuits[circuit]["nmse"][i,:] = np.vstack((nmse_BFGS, nmse_NLLS, nmse_simplex)).T
+                fitted_circuits[circuit]["t"][i,:] = np.vstack((t_BFGS, t_NLLS, t_simplex)).T
 
         return fitted_circuits

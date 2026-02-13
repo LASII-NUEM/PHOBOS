@@ -15,12 +15,12 @@ def Fouquet2005(theta, args):
         omega = args[0] #rad/s
 
     theta = np.array(theta)*args[1] #scaling
-    R1 = theta[0]
-    R2 = theta[1]
-    Q = theta[2]
-    n = theta[3]
-    Rd = theta[4]
-    taud = theta[5]
+    R1 = theta[:,0]
+    R2 = theta[:,1]
+    Q = theta[:,2]
+    n = theta[:,3]
+    Rd = theta[:,4]
+    taud = theta[:,5]
 
     #impedance computation
     Zws = (Rd*np.tanh((1j*omega*taud)**0.5))/((1j*omega*taud)** 0.5) #warburg short-finite impedance
@@ -137,14 +137,14 @@ def Zurich2021(theta, args):
         omega = args[0] #rad/s
 
     theta = np.array(theta)*args[1] #scaling
-    R1 = theta[0]
-    Q = theta[1]
-    n = theta[2]
+    R1 = theta[:,0]
+    Q = theta[:,1]
+    n = theta[:,2]
     # Rd = theta[3]
     # taud = theta[4]
-    Zws = theta[3]
-    R2 = theta[4]
-    C = theta[5]
+    Zws = theta[:,3]
+    R2 = theta[:,4]
+    C = theta[:,5]
 
     #impedance computation
     #Zws = (Rd*np.tanh((1j*omega*taud)**0.5))/((1j*omega*taud)** 0.5) #warburg short-finite impedance
@@ -203,13 +203,13 @@ def Hong2021(theta, args):
         omega = args[0] #rad/s
 
     theta = np.array(theta) * args[1] #scaling
-    R1 = theta[0]
-    Q1 = theta[1]
-    n1 = theta[2]
-    R2 = theta[3]
-    Q2 = theta[4]
-    n2 = theta[5]
-    R3 = theta[6]
+    R1 = theta[:,0]
+    Q1 = theta[:,1]
+    n1 = theta[:,2]
+    R2 = theta[:,3]
+    Q2 = theta[:,4]
+    n2 = theta[:,5]
+    R3 = theta[:,6]
 
     #impedance computation
     CPE1 = Q1*((1j*omega)**n1) #constant phase element
@@ -265,11 +265,11 @@ def Awayssa2025(theta, args):
         omega = args[0] #rad/s
 
     theta = np.array(theta)*args[1] #scaling
-    R1 = theta[0]
-    R2 = theta[1]
-    C1 = theta[2]
-    L1 = theta[3]
-    C2 = theta[4]
+    R1 = theta[:,0]
+    R2 = theta[:,1]
+    C1 = theta[:,2]
+    L1 = theta[:,3]
+    C2 = theta[:,4]
 
     #impedance computation
     tau2 = 1j*omega*R2*C1 #j2R2C1
@@ -321,12 +321,12 @@ def Yang2025(theta, args):
         omega = args[0] #rad/s
 
     theta = np.array(theta)*args[1] #scaling
-    R1 = theta[0]
-    R2 = theta[1]
-    Q = theta[2]
-    n = theta[3]
-    Rd = theta[4]
-    taud = theta[5]
+    R1 = theta[:,0]
+    R2 = theta[:,1]
+    Q = theta[:,2]
+    n = theta[:,3]
+    Rd = theta[:,4]
+    taud = theta[:,5]
     #Zws = theta[3]
 
     #impedance computation
@@ -378,12 +378,12 @@ def Zhang2024(theta, args):
         omega = args[0] #rad/s
 
     theta = np.array(theta)*args[1] #scaling
-    Q = theta[0]
-    n = theta[1]
-    R1 = theta[2]
-    R2 = theta[3]
-    Rd = theta[4]
-    taud = theta[5]
+    Q = theta[:,0]
+    n = theta[:,1]
+    R1 = theta[:,2]
+    R2 = theta[:,3]
+    Rd = theta[:,4]
+    taud = theta[:,5]
 
     #impedance computation
     Zws = (Rd*np.tanh((1j*omega*taud)**0.5))/((1j*omega*taud)** 0.5) #warburg short-finite impedance
