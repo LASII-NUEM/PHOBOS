@@ -1,12 +1,12 @@
 # First, let's learn some basics of Python programming
 
-# 1. Variables
+# 0. Variables
 # A way to store values computed or assigned in your script.
 
 var1 = 1 #assign a value to variable
 var2 = max([1,2,3,4,5]) #compute a value and assign to a variable
 
-# 2. Data types
+# 1. Data types
 # Any valid "value" in Python belongs to a data type.
 # These types can span from simple numbers (integers, floats, complex values), character sequences (strings), and logic values (boolean) to more complex structures like classes.
 
@@ -28,7 +28,7 @@ print(f'type(x3) = {type(x3)}')
 x4 = 'Igor'
 print(f'type(x4) = {type(x4)}')
 
-# 2.1 Type casting
+# 1.1 Type casting
 # You can "convert" a value from a type to another, this is called "casting"
 x = float(x)
 print(f'type(x) w/ float casting = {type(x)}')
@@ -39,7 +39,7 @@ print(f'type(x1) w/ integer casting  = {type(x1)}')
 x3 = int(x3)
 print(f'type(x3) w/ integer casting  = {type(x3)}')
 
-# 3. Operators
+# 2. Operators
 # Operators are straightforward and work as one would expect:
 
 # - sum: +
@@ -64,3 +64,7 @@ print(f'var3*=10 = {var3}')
 var4 = 1
 var5 = 420
 print(f'[int() / int()] a division of two integers results in: {type(var5/var4)}')
+
+#Other special operators include:
+# - modulo: %
+# - integer division: //
