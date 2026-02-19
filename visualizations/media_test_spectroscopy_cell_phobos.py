@@ -2,11 +2,11 @@ from framework import file_lcr, visualization_utils, characterization_utils
 import numpy as np
 
 #PHOBOS spectroscopy acquisition
-spec_air_obj = file_lcr.read('../data/testICE_09_01_26/c0.csv', n_samples=3, sweeptype="cell", acquisition_mode="spectrum", aggregate=np.mean)
-spec_deionized_obj = file_lcr.read('../data/testICE_09_01_26/deionized.csv', n_samples=3, sweeptype="cell", acquisition_mode="spectrum", aggregate=np.mean)
-spec_distilled_obj = file_lcr.read('../data/testICE_09_01_26/distilled.csv', n_samples=3, sweeptype="cell", acquisition_mode="spectrum", aggregate=np.mean)
-spec_mineral_obj = file_lcr.read('../data/testICE_09_01_26/mineral.csv', n_samples=3, sweeptype="cell", acquisition_mode="spectrum", aggregate=np.mean)
-spec_tap_obj = file_lcr.read('../data/testICE_09_01_26/tap.csv', n_samples=3, sweeptype="cell", acquisition_mode="spectrum", aggregate=np.mean)
+spec_air_obj = file_lcr.read('../data/testICE_09_01_26/c0.csv', n_samples=3, electrode="cell", acquisition_mode="spectrum", aggregate=np.mean)
+spec_deionized_obj = file_lcr.read('../data/testICE_09_01_26/deionized.csv', n_samples=3, electrode="cell", acquisition_mode="spectrum", aggregate=np.mean)
+spec_distilled_obj = file_lcr.read('../data/testICE_09_01_26/distilled.csv', n_samples=3, electrode="cell", acquisition_mode="spectrum", aggregate=np.mean)
+spec_mineral_obj = file_lcr.read('../data/testICE_09_01_26/mineral.csv', n_samples=3, electrode="cell", acquisition_mode="spectrum", aggregate=np.mean)
+spec_tap_obj = file_lcr.read('../data/testICE_09_01_26/tap.csv', n_samples=3, electrode="cell", acquisition_mode="spectrum", aggregate=np.mean)
 
 
 #plots

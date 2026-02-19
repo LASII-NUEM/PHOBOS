@@ -2,6 +2,15 @@ import numpy as np
 from scipy.optimize import minimize
 import time
 
+def powell(theta):
+    theta = np.atleast_2d(theta) #ensure shape for both minimize and NelderMeadSimplex
+    q1 = (theta[:,0]+theta[:,1])**2
+    q2 = 5*(theta[:,2]-theta[:,3])**2
+    q3 = (theta[:,1]-2*theta[:,2])**4
+    q4 = 10*(theta[:,0]-theta[:,3])**4
+    
+    return q1 + q2 + q3 + q4
+
 def rosenbrock(theta):
     theta = np.atleast_2d(theta) #ensure shape for both minimize and NelderMeadSimplex
     first_half = 100*(theta[:,1]-theta[:,0]**2)**2
@@ -12,7 +21,7 @@ def rosenbrock(theta):
 def centroid(coordinates):
     return np.sum(coordinates, axis=0)/len(coordinates)
 
-def NelderMeadSimplex(func, theta, alfa=1, beta=2, gamma=0.5, step=0.05, tol=1e-8, max_iter=1000):
+def NelderMeadSimplex(func, theta, alfa=1, beta=2, gamma=0.5, step=0.0025, tol=1e-8, max_iter=1000):
     '''
     :param func: pointer to the cost function of the minimization problem
     :param theta: initial point for the simplex (P[0])
@@ -94,15 +103,14 @@ def NelderMeadSimplex(func, theta, alfa=1, beta=2, gamma=0.5, step=0.05, tol=1e-
 
 #Nelder-Mead Simplex solution
 t_init = time.time()
-x_simplex, y_simplex = NelderMeadSimplex(rosenbrock, np.array([-1.2,1]))
+x_simplex, y_simplex = NelderMeadSimplex(rosenbrock, np.array([-1.2,1]), tol=1e-8)
 print(f'[Simplex] t_elapse = {time.time()-t_init}')
 print(f'[Simplex] opt_params = {x_simplex}')
 print(f'[Simplex] min. cost = {y_simplex}')
 
-
 #BFGS solution
 t_init = time.time()
-res_BFGS = minimize(rosenbrock, np.array([-1.2, 1]), tol=1e-8)
+res_BFGS = minimize(rosenbrock, np.array([-1.2,1]), tol=1e-8, method="Nelder-Mead")
 print(f'[BFGS] t_elapse = {time.time()-t_init}')
 print(f'[BFGS] opt_params = {res_BFGS.x}')
 print(f'[BFGS] opt_params = {res_BFGS.fun}')

@@ -8,7 +8,7 @@ import matplotlib.animation as animation
 
 #read the files
 filename_flange = '../data/testICE_30_01_26/c_test.csv'
-spec_ice_obj = file_lcr.read(filename_flange, n_samples=1, sweeptype="cell", acquisition_mode="freq", aggregate=np.mean)
+spec_ice_obj = file_lcr.read(filename_flange, n_samples=1, electrode="cell", acquisition_mode="freq", aggregate=np.mean)
 z_meas_real, z_meas_imag = characterization_utils.complex_impedance(spec_ice_obj, spec_ice_obj.freqs)
 z_meas = z_meas_real-1j*z_meas_imag
 freqs_mask = spec_ice_obj.freqs > 100

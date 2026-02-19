@@ -36,13 +36,13 @@ LCR_C0_chiller = '../data/freezerVSchiller/LCR_C_30_01/C0.csv'
 LCR_C1_chiller = '../data/freezerVSchiller/LCR_C_30_01/C1.csv'
 LCR_Cice_chiller = '../data/freezerVSchiller/LCR_C_30_01/C_ice.csv'
 
-LCR_C_C0_obj = file_lcr.read(LCR_C0_chiller, n_samples=3, sweeptype="cell", acquisition_mode="spectrum", aggregate=np.mean)
-LCR_C_C1_obj = file_lcr.read(LCR_C1_chiller, n_samples=3, sweeptype="cell", acquisition_mode="spectrum", aggregate=np.mean)
-LCR_C_Cice_obj = file_lcr.read(LCR_Cice_chiller, n_samples=3, sweeptype="cell", acquisition_mode="spectrum", aggregate=np.mean)
+LCR_C_C0_obj = file_lcr.read(LCR_C0_chiller, n_samples=3, electrode="cell", acquisition_mode="spectrum", aggregate=np.mean)
+LCR_C_C1_obj = file_lcr.read(LCR_C1_chiller, n_samples=3, electrode="cell", acquisition_mode="spectrum", aggregate=np.mean)
+LCR_C_Cice_obj = file_lcr.read(LCR_Cice_chiller, n_samples=3, electrode="cell", acquisition_mode="spectrum", aggregate=np.mean)
 
-LCR_F_C0_obj = file_lcr.read(LCR_C0_freezer, n_samples=3, sweeptype="cell", acquisition_mode="spectrum", aggregate=np.mean)
-LCR_F_C1_obj = file_lcr.read(LCR_C1_freezer, n_samples=3, sweeptype="cell", acquisition_mode="spectrum", aggregate=np.mean)
-LCR_F_Cice_obj = file_lcr.read(LCR_Cice_freezer, n_samples=3, sweeptype="cell", acquisition_mode="spectrum", aggregate=np.mean)
+LCR_F_C0_obj = file_lcr.read(LCR_C0_freezer, n_samples=3, electrode="cell", acquisition_mode="spectrum", aggregate=np.mean)
+LCR_F_C1_obj = file_lcr.read(LCR_C1_freezer, n_samples=3, electrode="cell", acquisition_mode="spectrum", aggregate=np.mean)
+LCR_F_Cice_obj = file_lcr.read(LCR_Cice_freezer, n_samples=3, electrode="cell", acquisition_mode="spectrum", aggregate=np.mean)
 
 
 # //----------------------------//

@@ -42,6 +42,251 @@ class OptimizerResults:
         if t_elapsed is not None:
             self.t_elapsed = t_elapsed
 
+def NelderMeadSimplex(cost_fun, theta:np.ndarray, args=(), alfa=1, beta=2, gamma=0.5, step=0.05, tol=1e-8, max_iter=None, bounds=None, adaptative=False):
+    '''
+    :param cost_fun: pointer to the cost function of the minimization problem
+    :param theta: initial point for the simplex (P[0])
+    :param args: list with parameters that won't be minimized but are required to compute the cost
+    :param alfa: reflection coefficient
+    :param beta: expansion coefficient
+    :param gamma: contraction coefficient
+    :param step: step to generate the Simplex from P[0]
+    :param tol: tolerance of the algorithm for stop criteria (std(y) < tol)
+    :param max_iter: total allowed iterations of the algorithm
+    :param bounds: constraints of the problem
+    :param adaptative: flag to enable parameter adaptation to the dimension of the problem
+    :return the point at the simplex's vertex that minimized the cost
+    '''
+
+    #control variables of the algorithm
+    n = len(theta) #points that define the simplex
+    y_idx = np.arange(0,n+1,1) #indexes to extract l, h, and s
+
+    #handle 'max_iter'
+    if max_iter is None:
+        max_iter = n*200
+
+    #handle 'bounds'
+    if bounds is not None:
+        if isinstance(bounds, list):
+            bounds = np.array(bounds) #convert to numpy array
+            lower_bounds = bounds[:,0] #lower bounds for each parameter
+            upper_bounds = bounds[:,1] #uppper bounds for each parameter
+        else:
+            lower_bounds = bounds[:,0] #lower bounds for each parameter
+            upper_bounds = bounds[:,1] #uppper bounds for each parameter
+
+    #handle 'adaptative'
+    if adaptative:
+        alfa = 1
+        beta = 1+2/n
+        gamma = 0.75-1/(2*n)
+
+    #define the initial simplex
+    step_mtx = step*np.roll(np.eye(n+1,n),0) #matrix that defines the vertices
+    simplex = step_mtx + np.tile(theta[:,np.newaxis], n+1).T #apply the step
+
+    #nelder-mead simplex algorithm
+    iter = 0 #counter to monitor iterations
+    while True:
+        iter += 1 #update the iteration counter
+
+        #apply constraints if required
+        if bounds is not None:
+            simplex = np.clip(simplex, lower_bounds, upper_bounds)
+
+        y = cost_fun(simplex, args) #compute the cost at each vertex of the simplex
+
+        #stop criterion
+        delta = np.std(y)
+        if delta < tol:
+            break
+
+        h = np.argmax(y) #index of the maximum cost
+        yh = cost_fun(simplex[h,:][:,np.newaxis].T, args)
+        y_idx_nH = y_idx!=h #mask to ensure i!=h in the comparison
+        l = np.argmin(y) #index of the minimum cost
+        yl = cost_fun(simplex[l,:][:,np.newaxis].T, args) #update the cost at the lower bound
+        y_idx_cent = (y_idx!=h)&(y_idx!=l) #mask to detect second highest cost
+        P_cent = np.mean(simplex[y_idx_nH], axis=0) #compute the centroid without h
+        s = np.argmax(y[y_idx_cent]) #index of the second highest cost
+        y_s = cost_fun(simplex[s,:][:,np.newaxis].T, args)
+
+        #reflection
+        P_r = P_cent + alfa*(P_cent-simplex[h,:])
+        y_r = cost_fun(P_r[:,np.newaxis].T, args)
+
+        #expansion
+        if y_r < yl:
+            P_e = P_cent + beta*(P_r-P_cent)
+            y_e = cost_fun(P_e[:,np.newaxis].T, args)
+            if y_e < y_r:
+                simplex[h,:] = P_e
+            elif y_e >= y_r:
+                simplex[h,:] = P_r
+
+        #contraction
+        elif y_r >= y_s:
+            if y_r < y[h]:
+                simplex[h,:] = P_r
+
+            P_c = P_cent + gamma*(simplex[h,:]-P_cent)
+            y_c = cost_fun(P_c[:,np.newaxis].T, args)
+
+            if y_c > yh:
+                simplex[y_idx_cent,:] = 0.5*(simplex[y_idx_cent,:]+simplex[l, :])
+                y = cost_fun(simplex, args)
+
+            elif y_c <= yh:
+                simplex[h,:] = P_c
+        else:
+            simplex[h,:] = P_r
+
+        #iteration criteria
+        if iter == max_iter:
+            break
+
+    opt_vertex = np.argmin(y)
+    return simplex[opt_vertex,:]
+
+def generate_Jacobian(z_fun, theta:np.ndarray, y_hat:np.ndarray, delta_params:np.ndarray, args=()):
+    '''
+     :param z_fun: the function to compute the impedance of the target circuit of the fitting
+    :param theta: current guess for the levenberg-marquardt algorithm
+    :param y_hat: predicted samples of the current iteration
+    :param delta_params: fractional increment of the derivatives
+    :param args: list with parameters that won't be minimized but are required to compute the impedance
+    :return: the Jacobian matrix computed by the central finite difference
+    '''
+
+    m = len(y_hat) #number of samples to be fitted
+    n = len(theta) #number of candidate values
+    J = np.zeros(shape=(m,n)) #Jacobian matrix
+
+    for i in range(n):
+        placeholder_theta = theta[i] #store the current theta before applying central difference
+        curr_step = delta_params[i]*(1+np.abs(placeholder_theta)) #step for the central difference
+        if curr_step!=0:
+            theta[i] = placeholder_theta+curr_step #x[i+h]
+            forward_y = z_fun(theta,args) #evaluate the cost at the i+h sample
+            forward_y = forward_y.astype("complex").real
+            theta[i] = placeholder_theta-curr_step #x[i-h]
+            backwards_y = z_fun(theta, args) #evaluate the cost at the i-h sample
+            backwards_y = backwards_y.astype("complex").real
+            J[:,i] = (forward_y-backwards_y)/(2*curr_step) #(x[i+h]-x[i-h])/2h
+
+        theta[i] = placeholder_theta #rebuild the parameters array
+
+    return J
+
+def LevenbergMarquardt(z_fun, theta:np.ndarray, args=(), damping=1e5, gn_rate=9, gd_rate=11, tol=1e-6, max_iter=None, bounds=None):
+    '''
+    :param z_fun: the function to compute the impedance of the target circuit of the fitting
+    :param theta: initial guess for the levenberg-marquardt algorithm
+    :param args: list with parameters that won't be minimized but are required to compute the impedance
+    :param damping: damping coefficient
+    :param gn_rate: rate to reduce the damping coefficient once the solution improves (gauss-newton scenario)
+    :param gd_rate: rate to increase the damping coefficient once the solution deteriorates (gradient descent scenario)
+    :param tol: tolerance of the algorithm for stop criteria (norm(J.W) < tol)
+    :param max_iter: total allowed iterations of the algorithm
+    :param bounds: constraints of the problem
+    :return: the candidate values for Z that minimized the weighted chi-square cost function
+    '''
+
+    #control variables of the algorithm
+    n_params = len(theta) #number of candidate values
+    n_points = len(args[0]) #number of samples to be fitted
+
+    #ensure proper shapes for the signals
+    args[0] = args[0].astype("complex")
+    args[0] = np.atleast_1d(args[0].real).flatten() #measured samples
+    args[1] = np.atleast_1d(args[1].real).flatten() #angular frequencies
+
+    #handle 'max_iter'
+    if max_iter is None:
+        max_iter = 100*n_params**2
+
+    #handle bounds
+    if bounds is not None:
+        if isinstance(bounds, list):
+            bounds = np.array(bounds) #convert to numpy array
+            lower_bounds = bounds[:,0] #lower bounds for each parameter
+            upper_bounds = bounds[:,1] #uppper bounds for each parameter
+        else:
+            lower_bounds = bounds[:,0] #lower bounds for each parameter
+            upper_bounds = bounds[:,1] #uppper bounds for each parameter
+
+    #define the defaults weights based no the measured samples
+    W = np.abs(1/(args[0].T @ args[0])) #W = 1/sum(y[i]**2)
+    W *= np.ones(n_points) #weight matrix
+    delta_params = 0.001*np.ones(n_params) #fractional increment of the derivatives
+
+    #initialize the DLS matrices
+    y_hat = z_fun(theta, args[1:]) #compute the impedance of the circuit at the current candidates
+    y_hat = y_hat.astype("complex")
+    y_hat = np.atleast_1d(y_hat.real).flatten() #ensure sizes
+    J = generate_Jacobian(z_fun, theta, y_hat, delta_params, args=args[1:]) #compute the Jacobian
+    res = args[0].real-y_hat #compute the residues (y-ŷ)
+    chi_sqr = res.T @ (W*res) #sum of the weighted squared errors
+    last_chi_sqr = chi_sqr #variable to monitor the evolution of the cost function (damping factor tolerance)]
+    H = J.T @ (J*W[:,np.newaxis]) #compute the Hessian (second order term)
+    b = J.T @ (W*res) #vector of coefficients
+
+    #levenberg-marquardt algorithm
+    iter = 0 #counter to monitor iterations
+    while True:
+        iter += 1 #update the iteration counter
+        A = H + damping*np.diag(np.diag(H)) #(JᵀWJ + λ*diag(JᵀWJ)) -> Marquardt's update relationship
+
+        #solve for the step in the candidate values with the pseudo-inverse
+        try:
+            h_first_half = np.linalg.inv(A.T @ A)
+            h_second_half = A.T @ b
+            h = h_first_half@h_second_half 
+        except:
+            #ensure matrix is well-conditioned (in case of singular matrices)
+            while np.linalg.cond(A) > 1e15:
+                A = A + 1e-6*np.sum(np.diag(A))/n_params*np.eye(n_params)
+                h_first_half = np.linalg.inv(A.T @ A)
+            h_second_half = A.T @ b
+            h = h_first_half @ h_second_half
+        
+        #evaluation step
+        candidate_theta = theta+h #update the candidate guess (theta+step)
+        candidate_theta = np.clip(candidate_theta, lower_bounds, upper_bounds) #apply constraints
+        y_hat = z_fun(candidate_theta, args[1:]) #compute the impedance at the candidate guess
+        y_hat = y_hat.astype("complex")
+        y_hat = np.atleast_1d(y_hat.real).flatten()
+        res = args[0].real-y_hat #compute the residue at the candidate guess
+        chi_sqr = res.T @ (W*res) #compute the sum of the weighted squared errors at the candidate guess
+        
+        #update step
+        if chi_sqr<last_chi_sqr:
+            damping /= gn_rate #reduce the damping coefficient to enable gauss-newton (closer to the local min.)
+            theta = candidate_theta #update the guess 
+            last_chi_sqr = chi_sqr #commute to store the chi-sqaure as the last valid cost
+            J = generate_Jacobian(z_fun, theta, y_hat, delta_params, args=args[1:]) #update the Jacobian
+            H = J.T @ (J*W[:,np.newaxis]) #update the Hessian
+            b = J.T @ (W*res) #update the vector of coefficients
+            
+            #gradient stop criteria
+            if np.linalg.norm(J*W[:,np.newaxis])<tol:
+                break
+            
+            #chi-square stop criteria
+            if chi_sqr<tol:
+                break
+    
+        else:
+            damping *= gd_rate #increase the damping coefficient to enable gradient descent (farther from the local min.)
+            chi_sqr = last_chi_sqr #commute to store the chi-sqaure as the last valid cost
+        
+        #iteration stop criteria
+        if iter==max_iter:
+            break
+
+    return theta
+
 class EquivalentCircuit:
     def __init__(self, topology: str, data_medium:data_types.SpectroscopyData, freqs:np.ndarray):
         '''
@@ -91,7 +336,11 @@ class EquivalentCircuit:
         z_hat = self.circuit_impedance(theta, [args[1], args[2]]) #compute the model for the arguments
         z_hat = z_hat.astype('complex')
         args[0] = args[0].astype('complex')
-        SSE = np.sum(((args[0].real-z_hat.real)**2)+((args[0].imag-z_hat.imag)**2))
+        if z_hat.ndim >= 2:
+            z_hat = z_hat.T
+            SSE = np.sum(((args[0].real-z_hat.real)**2)+((args[0].imag-z_hat.imag)**2), axis=1)
+        else:
+            SSE = np.sum(((args[0].real-z_hat.real)**2) + ((args[0].imag-z_hat.imag)**2))
 
         return SSE / len(z_hat)
 
@@ -105,7 +354,7 @@ class EquivalentCircuit:
         '''
 
         #validate "method"
-        valid_methods = ['BFGS', 'NLLS']
+        valid_methods = ['BFGS', 'NLLS', 'DLS', 'Nelder-Mead']
         if method not in valid_methods:
             raise ValueError(f'[EquivalentCircuit] {method} not implemented! Try: {valid_methods}')
         self.fit_method = method
@@ -130,7 +379,7 @@ class EquivalentCircuit:
         if self.fit_method == "BFGS":
             self.circuit_impedance = function_handlers[self.topology]["function_ptr"]
             t_init = time.time()
-            fit_obj = minimize(self.CUMSE, initial_guess, args=([self.z_meas, omega, scaling_array],), bounds=bounds, method='L-BFGS-B')
+            fit_obj = minimize(self.CUMSE, initial_guess, args=([self.z_meas, omega, scaling_array]), bounds=bounds, method='L-BFGS-B')
             t_elapsed = time.time() - t_init
             opt_fit = self.circuit_impedance(fit_obj.x, [omega, scaling_array]) #compute the circuit for the optimal values
             opt_params_scaled = fit_obj.x*scaling_array #rescale the minimized parameters
@@ -180,6 +429,54 @@ class EquivalentCircuit:
             return OptimizerResults(opt_params=fit_params_real, opt_params_scaled=opt_params_scaled,
                                     opt_fit=opt_fit, nmse_score=nmse, chi_square=chisqr, t_elapsed=t_elapsed) #return the optimized parameters
 
+        elif self.fit_method == 'DLS':
+            self.circuit_impedance = function_handlers[self.topology]["function_ptr"]
+            t_init = time.time()
+            fit_obj = LevenbergMarquardt(self.circuit_impedance, initial_guess, args=([self.z_meas, omega, scaling_array]), bounds=bounds)
+            t_elapsed = time.time() - t_init
+            opt_fit = self.circuit_impedance(fit_obj, [omega, scaling_array]) #compute the circuit for the optimal values
+            opt_params_scaled = fit_obj*scaling_array #rescale the minimized parameters
+            nmse = self.NMSE(self.z_meas.astype("complex"), opt_fit.astype("complex")) #NMSE score for both complex parts
+            chisqr = self.chi_square(self.z_meas.astype("complex"), opt_fit.astype("complex")) #chi-square score for both complex parts
+
+            if verbose:
+                print(f'[EquivalentCircuit] Damped Least-Squares impedance fitting:')
+                print(f't = {t_elapsed} s')
+                print(f'NMSE = {nmse}')
+                print(f'chi-square = {chisqr}')
+                fit_params = function_handlers[self.topology]["fit_params"]
+                print(f'fitted params = ')
+                for i in range(len(fit_params)):
+                    print(f'{fit_params[i]} = {opt_params_scaled[i]}')
+                print()
+
+            return OptimizerResults(opt_params=fit_obj, opt_params_scaled=opt_params_scaled, opt_fit=opt_fit,
+                                    nmse_score=nmse, chi_square=chisqr, t_elapsed=t_elapsed) #return the optimized parameters
+
+        elif self.fit_method == "Nelder-Mead":
+            self.circuit_impedance = function_handlers[self.topology]["function_ptr"]
+            t_init = time.time()
+            fit_obj = NelderMeadSimplex(self.CUMSE, initial_guess, args=([self.z_meas, omega, scaling_array]), bounds=bounds)
+            t_elapsed = time.time() - t_init
+            opt_fit = self.circuit_impedance(fit_obj, [omega, scaling_array]) #compute the circuit for the optimal values
+            opt_params_scaled = fit_obj*scaling_array #rescale the minimized parameters
+            nmse = self.NMSE(self.z_meas.astype("complex"), opt_fit.astype("complex")) #NMSE score for both complex parts
+            chisqr = self.chi_square(self.z_meas.astype("complex"), opt_fit.astype("complex")) #chi-square score for both complex parts
+
+            if verbose:
+                print(f'[EquivalentCircuit] Nelder-Mead Simplex impedance fitting:')
+                print(f't = {t_elapsed} s')
+                print(f'NMSE = {nmse}')
+                print(f'chi-square = {chisqr}')
+                fit_params = function_handlers[self.topology]["fit_params"]
+                print(f'fitted params = ')
+                for i in range(len(fit_params)):
+                    print(f'{fit_params[i]} = {opt_params_scaled[i]}')
+                print()
+
+            return OptimizerResults(opt_params=fit_obj, opt_params_scaled=opt_params_scaled, opt_fit=opt_fit,
+                                    nmse_score=nmse, chi_square=chisqr, t_elapsed=t_elapsed) #return the optimized parameters
+
         else:
             raise ValueError(f'[EquivalentCircuit] method = {method} not implemented! Try: {valid_methods}')
 
@@ -228,11 +525,14 @@ class EquivalentCircuit:
         if len(z) != len(z_hat):
             raise ValueError(f'[EquivalentCircuit] "z" and "z_hat" must match in length!')
 
-        chi_square_real = ((z.real-z_hat.real)/np.abs(z))**2
-        chi_square_imag = ((z.imag-z_hat.imag)/np.abs(z))**2
-        chi_square = chi_square_real + chi_square_imag
+        W = np.abs(1/(z.T @ z))
+        W = np.abs(W)*np.ones(len(z)) #weighting matrix
+        res_real = z.real-z_hat.real #real residue
+        chi_square_real = res_real.T @ (W*res_real)
+        res_imag = z.imag-z_hat.imag #imaginary residue
+        chi_square_imag = res_imag.T @ (W*res_imag)
 
-        return np.sum(chi_square)/len(z)
+        return chi_square_real + chi_square_imag
 
 class LinearKramersKronig:
     def __init__(self, data_medium:data_types.SpectroscopyData, freqs:np.ndarray, c=0.5, max_iter=100, add_capacitor=True, verbose=False):
