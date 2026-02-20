@@ -1,6 +1,6 @@
 import numpy as np
 import datetime
-from sklearn import linear_model
+from sklearn.linear_model import LinearRegression
 import matplotlib
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
@@ -36,6 +36,13 @@ Y = np.expand_dims(thick, axis=1)
 theta = LinearRegression(X, Y) #regression parameters
 y_hat = X@theta #predictions given the regression parameters (Y = X@theta)
 
+#built-in linear regression from sklearn package
+theta_skl = LinearRegression(X,Y)
+y_hat_skl = X@theta_skl
+
+#compare both predictions
+sum_res_hats = np.sum(np.abs(y_hat-y_hat_skl))
+
 plt.figure(1)
 leg = []
 plt.scatter(timestamps, thick)
@@ -48,6 +55,7 @@ plt.plot(timestamps, y_hat, color="tab:orange")
 leg.append("Linear regression")
 plt.xlabel("Frame Time")
 plt.ylabel("ICE Thickness [mm]")
+plt.legend(leg)
 plt.grid(True)
 plt.gcf().autofmt_xdate() #nicer datetime ticks
 plt.show()
