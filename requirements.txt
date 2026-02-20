@@ -1,7 +1,7 @@
+impedance
 matplotlib
 numpy
+opencv_python
 pandas
-xlrd
+scikit_learn
 scipy
-impedance
-opencv-python
