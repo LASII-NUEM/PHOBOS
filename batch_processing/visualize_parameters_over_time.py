@@ -21,39 +21,58 @@ with open(batch_data_path, 'rb') as handle:
 freqs = batch_data.media_obj.freqs
 human_timestamps = batch_data.media_obj.human_timestamps
 
+#plot the parameters over time
+normalize = False
+kernel_size = 20
+key_model = "Longo2020"
+algorithm = ["BFGS", "NLLS", "DLS", "Nelder-Mead Simplex"]
+colors = ["tab:orange", "tab:green", "tab:purple", "tab:red"]
 #arrays to store the parameters
-idx_model = 0
-key_model = list(batch_data.fit_data.keys())[idx_model]
 circuit_params = fitting_utils.function_handlers[key_model.lower()]["fit_params"]
 data = batch_data.fit_data
 params_model = data[key_model]["params"]
-params_overtime = []
+params_overtime = np.zeros(shape=(len(params_model),len(params_model[0][0]),len(params_model[0])))
 for i in range(len(params_model)):
-    params_overtime.append(params_model[i][idx_model])
-params_overtime = np.array(params_overtime) #convert to numpy array
+    params_overtime[i,:,:] = np.array(params_model[i]).T
 
-#plot the parameters over time
-plt.figure(1)
-kernel_size = 9
+#extract C from tau if Longo2020
+if key_model == "Longo2020":
+    params_overtime[:,1,:] = params_overtime[:,1,:]/params_overtime[:,0,:] #C1 = tau1/R1
+    params_overtime[:,3,:] = params_overtime[:,3,:]/params_overtime[:,2,:] #C2 = tau2/R2
+    params_overtime[:,5,:] = params_overtime[:,5,:]/params_overtime[:,4,:] #Q = tau3/R3
+    circuit_params = ['R1', 'C1', 'R2', 'C2', 'R3', 'Q', 'n3', 'tau4']
+
 for i in range(len(circuit_params)):
-    plt.subplot(1, len(circuit_params), i+1)
-
-    #extract C from tau if Longo2020
-    if key_model == "Longo2020":
-        params_overtime[1] = params_overtime[1]/params_overtime[0] #C1 = tau1/R1
-        params_overtime[3] = params_overtime[3]/params_overtime[2] #C2 = tau2/R2
-        params_overtime[5] = params_overtime[5]/params_overtime[4] #Q = tau3/R3
-        circuit_params = ['R1','C1','R2','C2','R3','Q','n3','tau4']
-
-    filtered_params = ndimage.median_filter(params_overtime[:,i], size=kernel_size)
+    plt.subplot(1, len(circuit_params),i+1)
     leg = []
-    plt.plot(filtered_params)
-    leg.append("predicted parameters")
-    plt.vlines(10, ymin=np.min(filtered_params), ymax=np.max(filtered_params), colors='red', linestyles='dotted')
+    y_max = 0
+    y_min = np.inf
+    for j in range(0,1):
+        filtered_params = ndimage.median_filter(params_overtime[:,i,j], size=kernel_size)
+
+        if not normalize:
+            if np.max(filtered_params) > y_max:
+                y_max = np.max(filtered_params)
+
+            if np.min(filtered_params) < y_min:
+                y_min = np.min(filtered_params)
+
+            plt.plot(filtered_params, color=colors[j])
+        else:
+            plt.plot(filtered_params/np.max(filtered_params), color=colors[j])
+
+        leg.append(f'{algorithm[j]}')
+
+    if not normalize:
+        plt.vlines(10, ymin=y_min, ymax=y_max, colors='black', linestyles='dotted')
+    else:
+        plt.vlines(10, ymin=0.5, ymax=1, colors='black', linestyles='dotted')
+
     leg.append("freezing instant")
     plt.title(circuit_params[i])
     plt.xlabel('samples')
     plt.legend(leg, prop={'size': 6})
     plt.grid()
-plt.suptitle(key_model)
-plt.show()
+    plt.suptitle(key_model)
+    plt.show()
+

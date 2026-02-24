@@ -344,11 +344,12 @@ class EquivalentCircuit:
 
         return SSE / len(z_hat)
 
-    def fit_circuit(self, initial_guess:np.ndarray, scaling_array:np.ndarray, method='BFGS', verbose=False):
+    def fit_circuit(self, initial_guess:np.ndarray, scaling_array:np.ndarray, method='BFGS', tol=1e-8, verbose=False):
         '''
         :param initial_guess: the initial guess for the fit to run the iterative algorithms
         :param scaling_array: scale all the search parameters to avoid exploding gradients
         :param method: which optimization algorithm will be used to fit the circuit data
+        :param tol: tolerance for the algorithms
         :param verbose: flag to print the statistics in the terminal
         :return: the parameters the best fit the expected equivalent circuit
         '''
