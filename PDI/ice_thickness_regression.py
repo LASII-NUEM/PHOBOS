@@ -17,14 +17,14 @@ def LinearRegression(X,Y):
     return first_half@seconds_half #array of parameters [n,n]@[n,1] = [n,1]
 
 #load the ice thickness data from
-data = np.load("./Ice_thickness_trace/ice_thickness_vs_time.npy", allow_pickle=True)
+data = np.load("Ice_thickness_trace/ice_thickness_vs_time.npy", allow_pickle=True)
 timestamps = data[:,0] #slice the array to acquire the timestamps
 seconds = (timestamps.astype('datetime64[s]')-timestamps.astype('datetime64[D]')).astype('timedelta64[s]').astype(int)
 thick = data[:,1].astype("float") #slice the array to acquire the thickness
 init_idx = np.argmin(np.abs(thick)) #find where thickness starts at 0 mm
-thick = thick[init_idx+1:]
+thick = np.log10(thick[init_idx+1:]+1e-8)
 timestamps = timestamps[init_idx+1:]
-rel_seconds = seconds[init_idx+1:]-seconds[init_idx+1] #relative timestamp
+rel_seconds = np.log10(seconds[init_idx+1:]-seconds[init_idx+1]+1e-8) #relative timestamp
 
 #the regression model proposed is s(t) = a0 + a1*t
 #where t is the time in seconds

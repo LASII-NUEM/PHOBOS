@@ -1,6 +1,4 @@
 import numpy as np
-from numpy.ma.core import empty
-
 from framework import file_lcr, file_ia, characterization_utils, fitting_utils, data_types
 import pickle
 import os
@@ -81,7 +79,7 @@ class MediumData:
                 curr_fit_obj = fitting_utils.EquivalentCircuit(circuit, data_medium, freqs)
 
                 #fit using the gradient-based method (BFGS)
-                curr_fit_params_BFGS = curr_fit_obj.fit_circuit(curr_fit_attributes["guess"], curr_fit_attributes["scale"], method="BFGS")
+                curr_fit_params_BFGS = curr_fit_obj.fit_circuit(curr_fit_attributes["guess"], curr_fit_attributes["scale_BFGS"], method="BFGS")
                 z_hat_real_BFGS = curr_fit_params_BFGS.opt_fit.real #real part of the fitting
                 z_hat_imag_BFGS = curr_fit_params_BFGS.opt_fit.imag #imaginary part of the fitting
                 if z_hat_imag_BFGS.ndim ==1:
@@ -94,7 +92,7 @@ class MediumData:
                 #fit using the non-linear-least-squares-based method (NLLS)
                 #hacky-fix: scipy's curve fit has an issue that when the total iterations are reached without convergence, it raises an error
                 try:
-                    curr_fit_params_NLLS = curr_fit_obj.fit_circuit(curr_fit_attributes["guess"], curr_fit_attributes["scale"], method="NLLS")
+                    curr_fit_params_NLLS = curr_fit_obj.fit_circuit(curr_fit_attributes["guess"], curr_fit_attributes["scale_NLLS"], method="NLLS")
                     z_hat_real_NLLS = curr_fit_params_NLLS.opt_fit.real
                     z_hat_imag_NLLS = curr_fit_params_NLLS.opt_fit.imag
                     if z_hat_imag_NLLS.ndim == 1:
@@ -110,23 +108,41 @@ class MediumData:
                     params_NLLS = np.zeros_like(params_BFGS)
                     t_NLLS = None
 
-                # fit using the Nelder-Mead Simplex method
-                curr_fit_params_simplex = curr_fit_obj.fit_circuit(curr_fit_attributes["guess"], curr_fit_attributes["scale"], method="Nelder-Mead")
+                # fit using the damped least-squares algorithm (DLS)
+                try:
+                    curr_fit_params_DLS = curr_fit_obj.fit_circuit(curr_fit_attributes["guess"], curr_fit_attributes["scale_DLS"], method="DLS")
+                    z_hat_real_DLS = curr_fit_params_DLS.opt_fit.real  # real part of the fitting
+                    z_hat_imag_DLS = curr_fit_params_DLS.opt_fit.imag  # imaginary part of the fitting
+                    if z_hat_imag_DLS.ndim == 1:
+                        z_hat_imag_DLS = z_hat_imag_DLS.reshape(len(freqs), self.media_obj.n_modes)
+                        z_hat_real_DLS = z_hat_real_DLS.reshape(len(freqs), self.media_obj.n_modes)
+                    params_DLS = curr_fit_params_DLS.opt_params_scaled
+                    nmse_DLS = curr_fit_params_DLS.nmse_score
+                    t_DLS = curr_fit_params_DLS.t_elapsed
+                except:
+                    z_hat_real_DLS = np.zeros(shape=(len(self.z_real), self.media_obj.n_modes))
+                    z_hat_imag_DLS = np.zeros(shape=(len(self.z_imag), self.media_obj.n_modes))
+                    nmse_DLS = 1
+                    params_DLS = np.zeros_like(params_BFGS)
+                    t_DLS = None
+
+                #fit using the Nelder-Mead Simplex method
+                curr_fit_params_simplex = curr_fit_obj.fit_circuit(curr_fit_attributes["guess"], curr_fit_attributes["scale_SIMPLEX"], method="Nelder-Mead")
                 z_hat_real_simplex = curr_fit_params_simplex.opt_fit.real #real part of the fitting
                 z_hat_imag_simplex = curr_fit_params_simplex.opt_fit.imag #imaginary part of the fitting
                 if z_hat_imag_simplex.ndim == 1:
                     z_hat_imag_simplex = z_hat_imag_simplex.reshape(len(freqs), self.media_obj.n_modes)
                     z_hat_real_simplex = z_hat_real_simplex.reshape(len(freqs), self.media_obj.n_modes)
-                params_NLLS = curr_fit_params_simplex.opt_params_scaled
+                params_simplex = curr_fit_params_simplex.opt_params_scaled
                 nmse_simplex = curr_fit_params_simplex.nmse_score
                 t_simplex = curr_fit_params_simplex.t_elapsed
 
                 #store the optimization parameters into the fit dictionary
-                fitted_circuits[circuit]["z_hat_real"] = np.hstack((z_hat_real_BFGS, z_hat_real_NLLS, z_hat_real_simplex))
-                fitted_circuits[circuit]["z_hat_imag"] = np.hstack((z_hat_imag_BFGS, z_hat_imag_NLLS, z_hat_imag_simplex))
-                fitted_circuits[circuit]["nmse"] = np.vstack((nmse_BFGS, nmse_NLLS, nmse_simplex)).T
-                fitted_circuits[circuit]["params"] = np.vstack((params_BFGS, params_NLLS, params_NLLS)).T
-                fitted_circuits[circuit]["t"] = np.vstack((t_BFGS, t_NLLS, t_simplex)).T
+                fitted_circuits[circuit]["z_hat_real"] = np.hstack((z_hat_real_BFGS, z_hat_real_NLLS, z_hat_real_DLS, z_hat_real_simplex))
+                fitted_circuits[circuit]["z_hat_imag"] = np.hstack((z_hat_imag_BFGS, z_hat_imag_NLLS, z_hat_imag_DLS, z_hat_imag_simplex))
+                fitted_circuits[circuit]["nmse"] = np.vstack((nmse_BFGS, nmse_NLLS, nmse_DLS, nmse_simplex)).T
+                fitted_circuits[circuit]["params"] = np.vstack((params_BFGS, params_NLLS, params_DLS, params_simplex)).T
+                fitted_circuits[circuit]["t"] = np.vstack((t_BFGS, t_NLLS, t_DLS, t_simplex)).T
 
         return fitted_circuits
 
@@ -363,6 +379,20 @@ class BatchImpedanceFit:
         self.z_real, self.z_imag = characterization_utils.complex_impedance(self.media_obj, self.media_obj.freqs) #compute the complex impedance
         t_init = time.time()
         self.fit_data = self.batch_fit_circuit(self.circuits, self.z_real, self.z_imag, self.media_obj.freqs) #batch fitting of the circuits
+
+        #if True, save the attributes as a pickle file
+        if save:
+            try:
+                filename = filename.split('/') #split on directories
+                pickle_file = f"batchfit_{filename[-2]}.pkl"
+                base_path = '/'.join(filename[:-1])
+                self.full_relative_path = os.path.join(base_path, pickle_file)
+                with open(self.full_relative_path, 'wb') as handle:
+                    pickle.dump(self, handle, protocol=pickle.HIGHEST_PROTOCOL)
+                print(f'[BatchImpedanceFit] Batch processing output saved at: {self.full_relative_path}')
+            except Exception as e:
+                print(f'[BatchImpedanceFit] Failed to save batch processing output with {e}!')
+
         print(f'[BatchImpedanceFit] finished computing all models in {time.time() - t_init}s')
 
     def batch_fit_circuit(self, circuits: dict, z_real:np.ndarray, z_imag:np.ndarray, freqs: np.ndarray):
@@ -382,14 +412,17 @@ class BatchImpedanceFit:
                                             "chi_square_KK": np.zeros(shape=(n_samples,)),
                                             "M_KK": np.zeros(shape=(n_samples,)),
                                             "status_KK": np.zeros(shape=(n_samples,), dtype=bool),
-                                            "z_hat_real": np.zeros(shape=(n_samples, n_freqs, 3)),
-                                            "z_hat_imag": np.zeros(shape=(n_samples, n_freqs, 3)),
-                                            "nmse": np.zeros(shape=(n_samples, 3)),
-                                            "t": np.zeros(shape=(n_samples, 3))})
+                                            "z_hat_real": np.zeros(shape=(n_samples, n_freqs, 4)),
+                                            "z_hat_imag": np.zeros(shape=(n_samples, n_freqs, 4)),
+                                            "nmse": np.zeros(shape=(n_samples, 4)),
+                                            "chi_square": np.zeros(shape=(n_samples, 4)),
+                                            "params": [],
+                                            "t": np.zeros(shape=(n_samples, 4))})
                                             for circ_name in list(circuits.keys())) #dictionary to store fitted circuits parameters and values to a dictionary
 
         #process each sample separately
         for i in range(0, n_samples):
+            print(f'{i+1}/{n_samples}')
             curr_z_real = z_real[i,0,:] #slice the real part
             curr_z_imag = z_imag[i,0,:] #slice the real part
             linKK_obj = fitting_utils.LinearKramersKronig([curr_z_real, curr_z_imag], freqs, c=0.5, max_iter=100, add_capacitor=True, verbose=False) #validate the data with the Kramers-Kronig test before fitting
@@ -406,33 +439,57 @@ class BatchImpedanceFit:
                 curr_fit_obj = fitting_utils.EquivalentCircuit(circuit, [curr_z_real, curr_z_imag], freqs)
 
                 #fit using the gradient-based method (BFGS)
-                curr_fit_params_BFGS = curr_fit_obj.fit_circuit(curr_fit_attributes["guess"], curr_fit_attributes["scale"], method="BFGS")
+                curr_fit_params_BFGS = curr_fit_obj.fit_circuit(curr_fit_attributes["guess"], curr_fit_attributes["scale_BFGS"], method="BFGS")
                 z_hat_real_BFGS = curr_fit_params_BFGS.opt_fit.real #real part of the fitting
                 z_hat_imag_BFGS = curr_fit_params_BFGS.opt_fit.imag #imaginary part of the fitting
                 nmse_BFGS = curr_fit_params_BFGS.nmse_score
+                chi_sqr_BFGS = curr_fit_params_BFGS.chi_square
                 t_BFGS = curr_fit_params_BFGS.t_elapsed
+                params_BFGS = curr_fit_params_BFGS.opt_params_scaled
 
                 #fit using the non-linear-least-squares-based method (NLLS)
                 #hacky-fix: scipy's curve fit has an issue that when the total iterations are reached without convergence, it raises an error
                 try:
-                    curr_fit_params_NLLS = curr_fit_obj.fit_circuit(curr_fit_attributes["guess"], curr_fit_attributes["scale"], method="NLLS")
+                    curr_fit_params_NLLS = curr_fit_obj.fit_circuit(curr_fit_attributes["guess"], curr_fit_attributes["scale_NLLS"], method="NLLS")
                     z_hat_real_NLLS = curr_fit_params_NLLS.opt_fit.real
                     z_hat_imag_NLLS = curr_fit_params_NLLS.opt_fit.imag
                     nmse_NLLS = curr_fit_params_NLLS.nmse_score
+                    chi_sqr_NLLS = curr_fit_params_NLLS.chi_square
                     t_NLLS = curr_fit_params_NLLS.t_elapsed
+                    params_NLLS = curr_fit_params_NLLS.opt_params_scaled
                 except:
                     z_hat_real_NLLS = np.zeros(shape=(1, len(freqs)))
                     z_hat_imag_NLLS = np.zeros(shape=(1, len(freqs)))
                     nmse_NLLS = 1
+                    chi_sqr_NLLS = 1
                     t_NLLS = None
+                    params_NLLS = np.zeros_like(params_BFGS)
+
+                #fit using the damped least-squares algorithm (DLS)
+                try:
+                    curr_fit_params_DLS = curr_fit_obj.fit_circuit(curr_fit_attributes["guess"], curr_fit_attributes["scale_DLS"], method="DLS")
+                    z_hat_real_DLS = curr_fit_params_DLS.opt_fit.real  # real part of the fitting
+                    z_hat_imag_DLS = curr_fit_params_DLS.opt_fit.imag  # imaginary part of the fitting
+                    nmse_DLS = curr_fit_params_DLS.nmse_score
+                    chi_sqr_DLS = curr_fit_params_DLS.chi_square
+                    t_DLS = curr_fit_params_DLS.t_elapsed
+                    params_DLS = curr_fit_params_DLS.opt_params_scaled
+                except:
+                    z_hat_real_DLS = np.zeros(shape=(1, len(freqs)))
+                    z_hat_imag_DLS = np.zeros(shape=(1, len(freqs)))
+                    nmse_DLS = 1
+                    chi_sqr_DLS = 1
+                    t_DLS = None
+                    params_DLS = np.zeros_like(params_BFGS)
 
                 #fit using the Nelder-Mead Simplex method
-                curr_fit_params_simplex = curr_fit_obj.fit_circuit(curr_fit_attributes["guess"],  curr_fit_attributes["scale"], method="Nelder-Mead")
+                curr_fit_params_simplex = curr_fit_obj.fit_circuit(curr_fit_attributes["guess"],  curr_fit_attributes["scale_SIMPLEX"], method="Nelder-Mead")
                 z_hat_real_simplex = curr_fit_params_simplex.opt_fit.real #real part of the fitting
                 z_hat_imag_simplex = curr_fit_params_simplex.opt_fit.imag #imaginary part of the fitting
                 nmse_simplex = curr_fit_params_simplex.nmse_score
+                chi_sqr_simplex = curr_fit_params_simplex.chi_square
                 t_simplex = curr_fit_params_simplex.t_elapsed
-
+                params_simplex = curr_fit_params_simplex.opt_params_scaled
 
                 #attribute the computed values to the circuit key at the fit circuit dictionary
                 fitted_circuits[circuit]["z_meas_real"][i,:] = curr_z_real
@@ -442,9 +499,11 @@ class BatchImpedanceFit:
                 fitted_circuits[circuit]["chi_square_KK"][i] = linKK_obj.chi_square
                 fitted_circuits[circuit]["M_KK"][i] = linKK_obj.fit_components
                 fitted_circuits[circuit]["status_KK"][i] = status
-                fitted_circuits[circuit]["z_hat_real"][i,:,:] = np.vstack((z_hat_real_BFGS, z_hat_real_NLLS, z_hat_real_simplex)).T
-                fitted_circuits[circuit]["z_hat_imag"][i,:,:] = np.vstack((z_hat_imag_BFGS, z_hat_imag_NLLS, z_hat_imag_simplex)).T
-                fitted_circuits[circuit]["nmse"][i,:] = np.vstack((nmse_BFGS, nmse_NLLS, nmse_simplex)).T
-                fitted_circuits[circuit]["t"][i,:] = np.vstack((t_BFGS, t_NLLS, t_simplex)).T
+                fitted_circuits[circuit]["z_hat_real"][i,:,:] = np.vstack((z_hat_real_BFGS, z_hat_real_NLLS, z_hat_real_DLS, z_hat_real_simplex)).T
+                fitted_circuits[circuit]["z_hat_imag"][i,:,:] = np.vstack((z_hat_imag_BFGS, z_hat_imag_NLLS, z_hat_imag_DLS, z_hat_imag_simplex)).T
+                fitted_circuits[circuit]["nmse"][i,:] = np.vstack((nmse_BFGS, nmse_NLLS, nmse_DLS, nmse_simplex)).T
+                fitted_circuits[circuit]["chi_square"][i,:] = np.vstack((chi_sqr_BFGS, chi_sqr_NLLS, chi_sqr_DLS, chi_sqr_simplex)).T
+                fitted_circuits[circuit]["t"][i,:] = np.vstack((t_BFGS, t_NLLS, t_DLS, t_simplex)).T
+                fitted_circuits[circuit]["params"].append([params_BFGS, params_NLLS, params_DLS, params_simplex])
 
         return fitted_circuits
