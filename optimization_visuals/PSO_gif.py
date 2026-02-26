@@ -1,5 +1,8 @@
 import numpy as np
-import time
+import matplotlib
+matplotlib.use('TkAgg')
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation, PillowWriter
 
 def ring_topology(swarm_positions, swarm_costs):
     left_neighbors_pos = np.roll(swarm_positions, 1, axis=0)
@@ -42,7 +45,6 @@ tol = 1e-6
 method = 'lbest'
 
 #randomly generate the positions and velocities of the swarm
-t_init = time.time()
 swarm_positions = np.random.uniform(bounds[0], bounds[1], size=(swarm_size,n)) #array to store the positions
 swarm_costs = rosenbrock(swarm_positions) #compute the cost at each swarm
 swarm_velocities = np.random.uniform(bounds[0], bounds[1], size=(swarm_size,n)) #array to store the positions
@@ -84,14 +86,32 @@ while True:
     G_best = P_best[idx_best,:]*np.ones_like(swarm_positions) #update new global best
 
     if method == 'lbest':
-        if all(np.abs(cost_P_best-old_best))<tol:
+        if all(np.abs(cost_P_best-old_best)) < tol:
             break
-        old_best = cost_P_best #update the last particle best costs
+        old_best = cost_P_best  # update the last particle best costs
 
     elif method == 'gbest':
         if np.abs(cost_P_best[idx_best]-old_best)<tol:
            break
 
-#Particle Swarm Optimization 'lbest' solution
-print(f'[PSO_lbest] t_elapse = {time.time()-t_init}')
-print(f'[PSO_lbest] opt_params = {G_best[0]}')
+points = np.array(points) #convert points to array
+swarms = np.array(swarms) #convert swarms to array
+fig, ax = plt.subplots()
+
+def animate(i):
+    ax.clear()
+    ax.set(xlim=(-1.5, 1.5), ylim=(-1.5, 1.5))
+    leg = []
+    rosen_image = ax.imshow(rosen_array.T, origin='lower', extent=[-1.5, 1.5, -1.5, 1.5])
+    curr_swarm = ax.scatter(swarms[i,:,0], swarms[i,:,1], c='tab:blue', label='guesses', s=2)
+    leg.append('Swarm at the PSO iteration')
+    guess = ax.scatter(points[:i,0], points[:i,1], c='tab:orange', label='guesses', s=4)
+    leg.append('Best particle at the PSO iteration')
+    true_min = ax.scatter(1,1, marker='x', color='tab:red', label=' true minimum')
+    leg.append('True minimum')
+    ax.legend(leg, loc='lower left')
+
+    return rosen_image, curr_swarm, guess, true_min
+
+ani = FuncAnimation(fig, animate, interval=40, blit=True, repeat=True, frames=points.shape[0])
+#ani.save("./PSO_lbest.gif", dpi=300, writer=PillowWriter(fps=25))

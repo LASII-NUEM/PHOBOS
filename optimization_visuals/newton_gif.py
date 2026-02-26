@@ -51,6 +51,7 @@ while True:
     curr_grad = rosen_grad(initial_guess)
     curr_hess = rosen_hess(initial_guess)
     points.append(initial_guess)
+
     #evaluate gradient
     if np.linalg.norm(curr_grad)<tol:
         break
