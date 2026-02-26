@@ -263,3 +263,101 @@ def LevenbergMarquardt(z_fun, theta: np.ndarray, args=(), damping=1e5, gn_rate=9
             break
 
     return theta
+
+def ring_topology(swarm_positions, swarm_costs):
+    '''
+    :param swarm_positions: the position of the particles in the swarm
+    :param swarm_costs: cost of each particle in the swarm
+    :return: the local best positions and costs of each particle in the swarm
+    '''
+
+    left_neighbors_pos = np.roll(swarm_positions, 1, axis=0)
+    left_neighbors_cost = np.roll(swarm_costs, 1, axis=0)
+    right_neighbors_pos = np.roll(swarm_positions, -1, axis=0)
+    right_neighbors_cost = np.roll(swarm_costs, -1, axis=0)
+    ring_pos = np.stack([left_neighbors_pos, swarm_positions, right_neighbors_pos]) #ring topology for positions
+    ring_cost = np.stack([left_neighbors_cost, swarm_costs, right_neighbors_cost]) #ring topology for costs
+    local_best = np.argmin(ring_cost, axis=0) #row wise index for the local best costs
+    cols = np.arange(0,ring_cost.shape[1],1) #index of the columns
+    swarm_costs[:] = ring_cost[local_best,cols] #mask the costs given the index of the local best
+    swarm_positions[:,:] = ring_pos[local_best,cols,:] #mask the positions given the index of the local best
+
+    return swarm_positions, swarm_costs
+
+def ParticleSwarm(cost_fun, n, args=(), method='gbest', swarm_size=50, c1=2, c2=2, weight=0.8, tol=1e-6, max_iter=None, bounds=None):
+    '''
+    :param cost_fun: pointer to the cost function of the minimization problem
+    :param n: number of dimensions
+    :param args: list with parameters that won't be minimized but are required to compute the cost
+    :param method: algorithm that sets which particle will be used as the best (lbest by default)
+    :param swarm_size: number of particles in a swarm
+    :param c1: cognitive acceleration
+    :param c2: social acceleration
+    :param tol: tolerance of the algorithm for stop criteria
+    :param max_iter: total allowed iterations of the algorithm
+    :param bounds: constraints of the problem
+    :return the best particle that minimized the cost
+    '''
+
+    #validate method
+    valid_methods = ['gbest', 'lbest']
+    if method not in valid_methods:
+        raise ValueError(f'[ParticleSwarm] Method {method} is not valid! Try: {valid_methods}')
+
+    #handle iteration
+    if max_iter is None:
+        max_iter = 100*n**2
+
+    #randomly generate the positions and velocities of the swarm
+    bounds = (0,10)
+    swarm_positions = np.random.uniform(bounds[0], bounds[1], size=(swarm_size, n)) #array to store the positions
+    swarm_costs = cost_fun(swarm_positions, args) #compute the cost for the current particles
+    swarm_velocities = np.random.uniform(bounds[0], bounds[1], size=(swarm_size, n)) #array to store the positions
+
+    if method == 'lbest':
+        P_best, cost_P_best = ring_topology(swarm_positions, swarm_costs) #find the best local particle in a neighborhood of 3
+    elif method == 'gbest':
+        P_best = swarm_positions #the best position found by each particle
+        cost_P_best = swarm_costs #the cost at the best position found by each particle
+
+    idx_best = np.argmin(cost_P_best) #find the index of the best cost up until now
+    G_best = P_best[idx_best,:]*np.ones_like(swarm_positions) #find the position of the best particle in the swarm
+    old_best = 0 #variable to store the best cost in the last iteration
+    n_iter = 0 #variable to monitor the iterations
+
+    while True:
+        #iteration stop criteria
+        n_iter += 1
+        if n_iter == max_iter:
+            break
+
+        r1, r2 = np.random.uniform(0, 1, 2)  # random uniform values
+        swarm_velocities = weight*swarm_velocities + c1*r1*(P_best-swarm_positions) + c2*r2*(G_best-swarm_positions) #evaluate the new velocity
+        swarm_positions += swarm_velocities #update the positions given the velocity
+        swarm_costs = cost_fun(swarm_positions, args) #update the costs
+
+        if method == 'lbest':
+            P_best, cost_P_best = ring_topology(swarm_positions, swarm_costs)
+
+        cost_mask = swarm_costs<cost_P_best #find where the new positions return the better costs
+        P_best[cost_mask] = swarm_positions[cost_mask] #update the best positions
+        P_best = np.clip(P_best, bounds[0], bounds[1]) #respect the bounds
+
+        #handle CPE exponent constraints
+        n_mask = P_best[:,6]>1
+        P_best[n_mask,6] = 1*np.ones_like(n_mask[n_mask==True])
+
+        cost_P_best[cost_mask] = swarm_costs[cost_mask] #update the best costs
+        idx_best = np.argmin(cost_P_best) #find the new minimum
+        G_best = P_best[idx_best,:]*np.ones_like(swarm_positions) #update new global best
+
+        if method == 'lbest':
+            if all(np.abs(cost_P_best - old_best)) < tol:
+               break
+            old_best = cost_P_best #update the last particle best costs
+
+        elif method == 'gbest':
+            if np.abs(cost_P_best[idx_best] - old_best) < tol:
+              break
+
+    return G_best[0]

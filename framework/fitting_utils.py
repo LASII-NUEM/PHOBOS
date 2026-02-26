@@ -80,7 +80,7 @@ class EquivalentCircuit:
 
         return SSE / len(z_hat)
 
-    def fit_circuit(self, initial_guess:np.ndarray, scaling_array:np.ndarray, method='BFGS', tol=1e-8, verbose=False):
+    def fit_circuit(self, initial_guess:np.ndarray, scaling_array:np.ndarray, method='BFGS', verbose=False):
         '''
         :param initial_guess: the initial guess for the fit to run the iterative algorithms
         :param scaling_array: scale all the search parameters to avoid exploding gradients
@@ -91,7 +91,7 @@ class EquivalentCircuit:
         '''
 
         #validate "method"
-        valid_methods = ['BFGS', 'NLLS', 'DLS', 'Nelder-Mead']
+        valid_methods = ['BFGS', 'NLLS', 'DLS', 'Nelder-Mead', 'PSO']
         if method not in valid_methods:
             raise ValueError(f'[EquivalentCircuit] {method} not implemented! Try: {valid_methods}')
         self.fit_method = method
@@ -202,6 +202,30 @@ class EquivalentCircuit:
 
             if verbose:
                 print(f'[EquivalentCircuit] Nelder-Mead Simplex impedance fitting:')
+                print(f't = {t_elapsed} s')
+                print(f'NMSE = {nmse}')
+                print(f'chi-square = {chisqr}')
+                fit_params = function_handlers[self.topology]["fit_params"]
+                print(f'fitted params = ')
+                for i in range(len(fit_params)):
+                    print(f'{fit_params[i]} = {opt_params_scaled[i]}')
+                print()
+
+            return optimization_utils.OptimizerResults(opt_params=fit_obj, opt_params_scaled=opt_params_scaled, opt_fit=opt_fit,
+                                    nmse_score=nmse, chi_square=chisqr, t_elapsed=t_elapsed) #return the optimized parameters
+
+        elif self.fit_method == "PSO":
+            self.circuit_impedance = function_handlers[self.topology]["function_ptr"]
+            t_init = time.time()
+            fit_obj = optimization_utils.ParticleSwarm(self.CUMSE, function_handlers[self.topology]["n_params"], method='gbest', args=([self.z_meas, omega, scaling_array]), bounds=bounds)
+            t_elapsed = time.time() - t_init
+            opt_fit = self.circuit_impedance(fit_obj, [omega, scaling_array]) #compute the circuit for the optimal values
+            opt_params_scaled = fit_obj*scaling_array #rescale the minimized parameters
+            nmse = self.NMSE(self.z_meas.astype("complex"), opt_fit.astype("complex")) #NMSE score for both complex parts
+            chisqr = self.chi_square(self.z_meas.astype("complex"), opt_fit.astype("complex")) #chi-square score for both complex parts
+
+            if verbose:
+                print(f'[EquivalentCircuit] Particle Swarm Optimization {method} impedance fitting:')
                 print(f't = {t_elapsed} s')
                 print(f'NMSE = {nmse}')
                 print(f'chi-square = {chisqr}')

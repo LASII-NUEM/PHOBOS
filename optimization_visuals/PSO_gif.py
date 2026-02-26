@@ -33,12 +33,12 @@ for i in range(len(x_points)):
         rosen_array[i,j] = rosenbrock(np.array([x_points[i], y_points[j]]))
 
 #Global/Local best Particle Swarm Optimization algorithm
-swarm_size = 60 #number of particles in the swarm
+swarm_size = 50 #number of particles in the swarm
 n = 2 #dimension of the problem
 bounds = [-1.5,1.5]
 c1 = 2 #cognitive acceleration
 c2 = 2 #social acceleration
-max_iter = 1000
+max_iter = 100*n**2
 n_iter = 0
 weight = 0.8
 tol = 1e-6
