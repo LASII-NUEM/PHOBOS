@@ -1,7 +1,7 @@
 from framework import characterization_utils, data_types
 import numpy as np
 import matplotlib
-matplotlib.use('TkAgg')
+# matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 
 def permittivity_by_freq_logx(data_medium: list[data_types.SpectroscopyData], data_air:data_types.SpectroscopyData, freqs: np.ndarray, eps_func=characterization_utils.dielectric_params_generic, medium = "water", artemov = False,  labels=None, title=None, yaxis_scale=1e5):

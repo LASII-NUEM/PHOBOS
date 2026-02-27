@@ -11,13 +11,22 @@ circuits = {"Longo2020": {"guess": np.array([1, 1, 1, 1, 1, 1, 1, 1]), "scale": 
 
 #For IA data
 base_path = "../data/IceMedia"
-ia_files = [found_file for found_file in os.listdir(base_path)] #list all IA-based files prior to processing
 
-for file in ia_files:
+ia_files = [found_file
+    for found_file in os.listdir(base_path)
+    if found_file.startswith("IA")
+]
+
+# for file in ia_files:
+#     path = os.path.join(base_path, file)
+#     batch_obj = batch_utils.BatchOrganizer(path, circuits, freq_threshold=None, electrode="cell", hardware = "ia", aggregate=np.mean, eps_func=characterization_utils.dielectric_params_corrected)
+
+
+lcr_files = [found_file
+    for found_file in os.listdir(base_path)
+    if found_file.startswith("LCR")
+]
+
+for file in lcr_files:
     path = os.path.join(base_path, file)
-    batch_obj = batch_utils.BatchOrganizer(path, circuits, freq_threshold=None, electrode="cell", hardware = "ia", aggregate=np.mean, eps_func=characterization_utils.dielectric_params_corrected)
-
-
-#For LCR data
-base_path_LCR = "../data/freezerVSchiller/LCR_C_30_01"
-lcr_obj = batch_utils.BatchOrganizer(base_path_LCR, circuits, freq_threshold=None, electrode="cell", hardware = "LCR", aggregate=np.mean, eps_func=characterization_utils.dielectric_params_corrected)
+    batch_obj = batch_utils.BatchOrganizer(path, circuits, freq_threshold=None, electrode="cell", hardware = "lcr", aggregate=np.mean, eps_func=characterization_utils.dielectric_params_corrected)
