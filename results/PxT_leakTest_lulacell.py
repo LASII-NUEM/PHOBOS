@@ -1,26 +1,22 @@
 from framework import file_lvm
 import numpy as np
-import matplotlib.pyplot as plt
+from matplotlib import pyplot as plt
+from datetime import datetime
 
 def moving_average(x, w):
     return np.convolve(x, np.ones(w), 'valid') / w
 
-filename = '../data/PxT_leaktest/test_pxt.lvm'
+filename = '../data/PxT_leaktest/test_pxt_26_02.lvm'
 lvm_obj = file_lvm.read(filename, setup = "lulacell")
-
-target = 3544.899256
-# target = 6825.001441
-idx =np.where(np.isclose(lvm_obj.relative_timestamp, target, rtol=0, atol=1e-9))[0]
-idx = int(idx[0])
 
 # teste PxT Lulacell
 pressure = np.asarray(lvm_obj.measured_pressure, dtype=float).ravel()
-pressure_std = np.std(pressure[idx:])
+pressure_std = np.std(pressure)
 print("Standard deviation Pressure:",pressure_std, "bar")
 pressure = pressure*100 #KPa to KPa
 
 temp = np.asarray(lvm_obj.measured_temp, dtype=float).ravel()
-temp_std = np.std(temp[idx:])
+temp_std = np.std(temp)
 print("Standard deviation Temperature:",temp_std, "°C")
 temp = temp+273.15 #K to K
 
@@ -33,46 +29,65 @@ temp_mean = temp_mean[:-1]
 
 t0 = time[0]
 time_num = (time - t0) / np.timedelta64(1, "s")     # seconds as float
-
+time_py = time.astype('datetime64[ms]').astype(datetime)
+idx1 = 20000
+idx2 = 150000
+idx3 = 625000
 # Temperature plot
 plt.plot(time_num, temp, '.',color='blue', label="measured")
+plt.axvline(x=time_num[idx1], color='red', linestyle='dashed')
+plt.text(time_num[idx1],
+         temp[idx1]-0.1,
+         f"{time_py[idx1].strftime('%H:%M:%S')}",
+         fontsize=8,
+         color='green')
+
+plt.axvline(x=time_num[idx2], color='red', linestyle='dashed')
+plt.text(time_num[idx2],
+         temp[idx2]-0.1,
+         f"{time_py[idx2].strftime('%H:%M:%S')}",
+         fontsize=8,
+         color='green')
+
+plt.axvline(x=time_num[idx3], color='red', linestyle='dashed')
+plt.text(time_num[idx3],
+         temp[idx3]+0.35,
+         f"{time_py[idx3].strftime('%H:%M:%S')}",
+         fontsize=8,
+         color='green')
 plt.legend()
 plt.title("Temperature leak test")
 plt.xlabel("time [s]")
 plt.ylabel("Temperature [K]")
 plt.show()
 
-coefT = np.polyfit(time_num[idx:], temp[idx:], 5)
-temp_fit = np.polyval(coefT, time_num)
-
-plt.plot(time_num[idx:], temp[idx:], '.',color='blue', label="measured")
-plt.plot(time_num[idx:], temp_fit[idx:], '-',color='red', label="poly fit (deg 5)")
-plt.legend()
-plt.title("Temperature leak test - idx")
-plt.xlabel("time [s]")
-plt.ylabel("Temperature [K]")
-plt.show()
-
 # Pressure plot
 plt.plot(time_num, pressure, 'o',color='blue', label="measured")
+plt.axvline(x=time_num[idx1], color='red', linestyle='dashed')
+plt.text(time_num[idx1],
+         pressure[idx1]-100,
+         f"{time_py[idx1].strftime('%H:%M:%S')}",
+         fontsize=8,
+         color='green')
+
+plt.axvline(x=time_num[idx2], color='red', linestyle='dashed')
+plt.text(time_num[idx2],
+         pressure[idx2]-100,
+         f"{time_py[idx2].strftime('%H:%M:%S')}",
+         fontsize=8,
+         color='green')
+
+plt.axvline(x=time_num[idx3], color='red', linestyle='dashed')
+plt.text(time_num[idx3],
+         pressure[idx3]+100,
+         f"{time_py[idx3].strftime('%H:%M:%S')}",
+         fontsize=8,
+         color='green')
 plt.title("Pressure leak test - idx")
 plt.legend()
 plt.xlabel("time [s]")
 plt.ylabel("Pressure [KPa]")
 plt.show()
-
-coefP = np.polyfit(time_num[idx:],pressure[idx:],1)
-pressure_fit= np.polyval(coefP, time_num)
-
-plt.plot(time_num[idx:], pressure[idx:], 'o',color='blue', label="measured")
-plt.plot(time_num[idx:], pressure_fit[idx:], '-',color='red', label="poly fit (deg 1)")
-plt.title("Pressure leak test - idx")
-plt.legend()
-plt.xlabel("time [s]")
-plt.ylabel("Pressure [KPa]")
-plt.show()
-
-
 
 # PxT  plot
 plt.plot(temp, pressure,color='blue', linestyle='dashed',label="measured")
@@ -83,25 +98,24 @@ plt.xlabel("Temperature [K]")
 plt.ylabel("Pressure [KPa]")
 plt.show()
 
+# [PxT] x t plot
+x = time_num
+y = pressure / temp
 
-coefPT = np.polyfit(temp[idx:],pressure[idx:],1)
-poly1d_fn = np.poly1d(coefPT)
+# Regressão linear
+a, b = np.polyfit(x, y, 1)
+y_fit = a * x + b
+# Plot original
 
-plt.plot(temp[idx:],pressure[idx:],color='blue',linestyle='dashed',label="measured")
-plt.plot(temp_mean[idx:],pressure_mean[idx:], color='red',linestyle='dotted',label="mean")
-# plt.plot(temp[idx:],pressure[idx:], 'r.', temp[idx:], poly1d_fn(temp[idx:]), '--k')
-plt.title("PxT leak test - idx")
+plt.figure(figsize=(8,5))
+plt.plot(x, y, color='blue', linestyle='dashed', label="Measured")
+# Plot regressão
+plt.plot(x, y_fit, color='red', linewidth=2,
+         label=f"Fit: y = {a:.3e}x + {b:.3e}")
+
+plt.title("[P/T] vs Time – Leak Test")
+plt.ylabel("Pressure / Temperature [kPa/K]")
+plt.xlabel("Time [s]")
 plt.legend()
-plt.xlabel("Temperature [K]")
-plt.ylabel("Pressure [KPa]")
+plt.grid(True)
 plt.show()
-
-
-plt.plot(time_num[idx:],pressure[idx:]/temp[idx:],color='blue',linestyle='dashed',label="measured")
-
-plt.title("PxT leak test - idx")
-plt.legend()
-plt.xlabel("Temperature [K]")
-plt.ylabel("Pressure [KPa]")
-plt.show()
-
