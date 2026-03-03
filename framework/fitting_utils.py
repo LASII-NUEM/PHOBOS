@@ -121,12 +121,14 @@ class EquivalentCircuit:
             opt_fit = self.circuit_impedance(fit_obj.x, [omega, scaling_array]) #compute the circuit for the optimal values
             opt_params_scaled = fit_obj.x*scaling_array #rescale the minimized parameters
             nmse = self.NMSE(self.z_meas.astype("complex"), opt_fit.astype("complex")) #NMSE score for both complex parts
+            nrmse = self.NRMSE(self.z_meas.astype("complex"), opt_fit.astype("complex")) #nrmse score for both complex parts
             chisqr = self.chi_square(self.z_meas.astype("complex"), opt_fit.astype("complex")) #chi-square score for both complex parts
 
             if verbose:
                 print(f'[EquivalentCircuit] Gradient-based impedance fitting:')
                 print(f't = {t_elapsed} s')
                 print(f'NMSE = {nmse}')
+                print(f'NRMSE = {nrmse}')
                 print(f'chi-square = {chisqr}')
                 fit_params = function_handlers[self.topology]["fit_params"]
                 print(f'fitted params = ')
@@ -135,7 +137,8 @@ class EquivalentCircuit:
                 print()
 
             return optimization_utils.OptimizerResults(opt_params=fit_obj.x, opt_params_scaled=opt_params_scaled, opt_cost=fit_obj.fun,
-                                    opt_fit=opt_fit, nmse_score=nmse, chi_square=chisqr, n_iter=fit_obj.nit, t_elapsed=t_elapsed) #return the optimized parameters
+                                    opt_fit=opt_fit, nmse_score=nmse, nrmse_score=nrmse, chi_square=chisqr,
+                                    n_iter=fit_obj.nit, t_elapsed=t_elapsed) #return the optimized parameters
 
         elif self.fit_method == "NLLS":
             self.circuit_impedance = function_handlers[self.topology]["partial_function_ptr"]
@@ -150,12 +153,14 @@ class EquivalentCircuit:
             opt_fit = function_handlers[self.topology]["function_ptr"](fit_params_real, [omega, scaling_array]) #compute the circuit real output for the optimal values
             opt_params_scaled = fit_params_real*scaling_array #rescale the minimized parameters
             nmse = self.NMSE(self.z_meas.astype("complex"), opt_fit.astype("complex")) #NMSE score for both complex parts
+            nrmse = self.NRMSE(self.z_meas.astype("complex"), opt_fit.astype("complex")) #nrmse score for both complex parts
             chisqr = self.chi_square(self.z_meas.astype("complex"), opt_fit.astype("complex")) #chi-square score for both complex parts
 
             if verbose:
                 print(f'[EquivalentCircuit] Non-linear least squares impedance fitting:')
                 print(f'NLLS fit elapsed time = {t_elapsed} s')
                 print(f'NMSE = {nmse}')
+                print(f'NRMSE = {nrmse}')
                 print(f'chi-square = {chisqr}')
                 fit_params = function_handlers[self.topology]["fit_params"]
                 print(f'fitted params = ')
@@ -164,7 +169,7 @@ class EquivalentCircuit:
                 print()
 
             return optimization_utils.OptimizerResults(opt_params=fit_params_real, opt_params_scaled=opt_params_scaled,
-                                    opt_fit=opt_fit, nmse_score=nmse, chi_square=chisqr, t_elapsed=t_elapsed) #return the optimized parameters
+                                    opt_fit=opt_fit, nmse_score=nmse, nrmse_score=nrmse, chi_square=chisqr, t_elapsed=t_elapsed) #return the optimized parameters
 
         elif self.fit_method == 'DLS':
             self.circuit_impedance = function_handlers[self.topology]["function_ptr"]
@@ -174,12 +179,14 @@ class EquivalentCircuit:
             opt_fit = self.circuit_impedance(fit_obj, [omega, scaling_array]) #compute the circuit for the optimal values
             opt_params_scaled = fit_obj*scaling_array #rescale the minimized parameters
             nmse = self.NMSE(self.z_meas.astype("complex"), opt_fit.astype("complex")) #NMSE score for both complex parts
+            nrmse = self.NRMSE(self.z_meas.astype("complex"), opt_fit.astype("complex")) #nrmse score for both complex parts
             chisqr = self.chi_square(self.z_meas.astype("complex"), opt_fit.astype("complex")) #chi-square score for both complex parts
 
             if verbose:
                 print(f'[EquivalentCircuit] Damped Least-Squares impedance fitting:')
                 print(f't = {t_elapsed} s')
                 print(f'NMSE = {nmse}')
+                print(f'NRMSE = {nrmse}')
                 print(f'chi-square = {chisqr}')
                 fit_params = function_handlers[self.topology]["fit_params"]
                 print(f'fitted params = ')
@@ -188,7 +195,7 @@ class EquivalentCircuit:
                 print()
 
             return optimization_utils.OptimizerResults(opt_params=fit_obj, opt_params_scaled=opt_params_scaled, opt_fit=opt_fit,
-                                    nmse_score=nmse, chi_square=chisqr, t_elapsed=t_elapsed) #return the optimized parameters
+                                    nmse_score=nmse, chi_square=chisqr, nrmse_score=nrmse, t_elapsed=t_elapsed) #return the optimized parameters
 
         elif self.fit_method == "Nelder-Mead":
             self.circuit_impedance = function_handlers[self.topology]["function_ptr"]
@@ -198,12 +205,14 @@ class EquivalentCircuit:
             opt_fit = self.circuit_impedance(fit_obj, [omega, scaling_array]) #compute the circuit for the optimal values
             opt_params_scaled = fit_obj*scaling_array #rescale the minimized parameters
             nmse = self.NMSE(self.z_meas.astype("complex"), opt_fit.astype("complex")) #NMSE score for both complex parts
+            nrmse = self.NRMSE(self.z_meas.astype("complex"), opt_fit.astype("complex")) #nrmse score for both complex parts
             chisqr = self.chi_square(self.z_meas.astype("complex"), opt_fit.astype("complex")) #chi-square score for both complex parts
 
             if verbose:
                 print(f'[EquivalentCircuit] Nelder-Mead Simplex impedance fitting:')
                 print(f't = {t_elapsed} s')
                 print(f'NMSE = {nmse}')
+                print(f'NRMSE = {nrmse}')
                 print(f'chi-square = {chisqr}')
                 fit_params = function_handlers[self.topology]["fit_params"]
                 print(f'fitted params = ')
@@ -212,35 +221,82 @@ class EquivalentCircuit:
                 print()
 
             return optimization_utils.OptimizerResults(opt_params=fit_obj, opt_params_scaled=opt_params_scaled, opt_fit=opt_fit,
-                                    nmse_score=nmse, chi_square=chisqr, t_elapsed=t_elapsed) #return the optimized parameters
+                                    nmse_score=nmse, chi_square=chisqr, nrmse_score=nrmse, t_elapsed=t_elapsed) #return the optimized parameters
 
         elif self.fit_method == "PSO":
             self.circuit_impedance = function_handlers[self.topology]["function_ptr"]
             t_init = time.time()
-            fit_obj = optimization_utils.ParticleSwarm(self.CUMSE, function_handlers[self.topology]["n_params"], method='gbest', args=([self.z_meas, omega, scaling_array]), bounds=bounds)
-            t_elapsed = time.time() - t_init
-            opt_fit = self.circuit_impedance(fit_obj, [omega, scaling_array]) #compute the circuit for the optimal values
-            opt_params_scaled = fit_obj*scaling_array #rescale the minimized parameters
-            nmse = self.NMSE(self.z_meas.astype("complex"), opt_fit.astype("complex")) #NMSE score for both complex parts
-            chisqr = self.chi_square(self.z_meas.astype("complex"), opt_fit.astype("complex")) #chi-square score for both complex parts
+
+            #compute 20 independent runs to yield the best fit through particle swarm
+            #Note: this is a strategy to bypass PSO's randomness
+            # Wang S-C, Liu Y-H. Research on Two-Stage Parameter Identification for Various Lithium-Ion Battery Models Using Bio-Inspired Optimization Algorithms.
+            # Applied Sciences. 2026; 16(1):202. https://doi.org/10.3390/app16010202
+
+            n_runs = 40
+            best_obj = None #variable to store the 'fit_obj' with the best accuracy
+            best_hat = None #varaible to store the fitted impendace with the best accuracy
+            best_nmse = np.inf #variable to store the best nmse
+            best_chisqr = np.inf #variable to store the best chi-square
+            for i in range(0,n_runs):
+                fit_obj = optimization_utils.ParticleSwarm(self.CUMSE, function_handlers[self.topology]["n_params"], swarm_size=50, method='lbest', args=([self.z_meas, omega, scaling_array]), bounds=bounds)
+                opt_fit = self.circuit_impedance(fit_obj, [omega, scaling_array]) #compute the circuit for the optimal values
+                nmse = self.NMSE(self.z_meas.astype("complex"), opt_fit.astype("complex")) #NMSE score for both complex parts
+                chisqr = self.chi_square(self.z_meas.astype("complex"), opt_fit.astype("complex")) #chi-square score for both complex parts
+
+                #update the variables if a new best has been achieved
+                if (nmse<best_nmse) & (chisqr<best_chisqr):
+                    best_obj = fit_obj
+                    best_hat = opt_fit
+                    best_nmse = nmse
+                    best_chisqr = chisqr
+
+            t_elapsed = time.time()-t_init
+            best_nrmse = self.NRMSE(self.z_meas.astype("complex"), best_hat.astype("complex")) #nrmse score for both complex parts
+            opt_params_scaled = best_obj*scaling_array  # rescale the minimized parameters
 
             if verbose:
                 print(f'[EquivalentCircuit] Particle Swarm Optimization {method} impedance fitting:')
                 print(f't = {t_elapsed} s')
-                print(f'NMSE = {nmse}')
-                print(f'chi-square = {chisqr}')
+                print(f'NMSE = {best_nmse}')
+                print(f'NRMSE = {best_nrmse}')
+                print(f'chi-square = {best_chisqr}')
                 fit_params = function_handlers[self.topology]["fit_params"]
                 print(f'fitted params = ')
                 for i in range(len(fit_params)):
                     print(f'{fit_params[i]} = {opt_params_scaled[i]}')
                 print()
 
-            return optimization_utils.OptimizerResults(opt_params=fit_obj, opt_params_scaled=opt_params_scaled, opt_fit=opt_fit,
-                                    nmse_score=nmse, chi_square=chisqr, t_elapsed=t_elapsed) #return the optimized parameters
+            return optimization_utils.OptimizerResults(opt_params=best_obj, opt_params_scaled=opt_params_scaled, opt_fit=best_hat,
+                                    nmse_score=best_nmse, chi_square=best_chisqr, nrmse_score=best_nrmse, t_elapsed=t_elapsed) #return the optimized parameters
 
         else:
             raise ValueError(f'[EquivalentCircuit] method = {method} not implemented! Try: {valid_methods}')
 
+    def NRMSE(self, z: np.ndarray, z_hat: np.ndarray):
+        '''
+        :param z: the observed values (real measurements)
+        :param z_hat: the predicted values from the fitted circuit
+        :return: MAPE of the fit for both real and imaginary part
+        '''
+
+        #validate 'z'
+        if not isinstance(z, np.ndarray):
+            raise TypeError(f'[EquivalentCircuit] "z" must be a Numpy Array! Curr. type = {type(z)}')
+
+        #validate 'z_hat'
+        if not isinstance(z_hat, np.ndarray):
+            raise TypeError(f'[EquivalentCircuit] "z_hat" must be a Numpy Array! Curr. type = {type(z_hat)}')
+
+        #validate shape
+        if len(z) != len(z_hat):
+            raise ValueError(f'[EquivalentCircuit] "z" and "z_hat" must match in length!')
+
+        #mean absolute percentage error
+        SSE = np.sum(((z_hat.real-z.real)**2)+((z_hat.imag-z.imag)**2)) #sum of squared errors
+        RMSE = np.sqrt(SSE/len(z)) #root mean squared error
+        CMEAN = np.mean(z.real+z.imag) #complex mean
+
+        return np.abs(RMSE/CMEAN)
 
     def NMSE(self, z:np.ndarray, z_hat:np.ndarray):
         '''

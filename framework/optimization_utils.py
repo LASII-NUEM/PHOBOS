@@ -1,7 +1,8 @@
 import numpy as np
+from scipy.spatial.distance import cdist
 
 class OptimizerResults:
-    def __init__(self, opt_params=None, opt_params_scaled=None, opt_cost=None, opt_fit=None, nmse_score=None, chi_square=None, n_iter=None, t_elapsed=None):
+    def __init__(self, opt_params=None, opt_params_scaled=None, opt_cost=None, opt_fit=None, nmse_score=None, nrmse_score=None, chi_square=None, n_iter=None, t_elapsed=None):
         if opt_params is not None:
             self.opt_params = opt_params
         if opt_params_scaled is not None:
@@ -12,6 +13,8 @@ class OptimizerResults:
             self.opt_fit = opt_fit
         if nmse_score is not None:
             self.nmse_score = nmse_score
+        if nrmse_score is not None:
+            self.nrmse_score = nrmse_score
         if chi_square is not None:
             self.chi_square = chi_square
         if n_iter is not None:
@@ -284,7 +287,7 @@ def ring_topology(swarm_positions, swarm_costs):
 
     return swarm_positions, swarm_costs
 
-def ParticleSwarm(cost_fun, n, args=(), method='gbest', swarm_size=50, c1=2, c2=2, weight=0.8, tol=1e-6, max_iter=None, bounds=None):
+def ParticleSwarm(cost_fun, n, args=(), method='gbest', swarm_size=50, c1=2, c2=2, weight=0.8, delta=0.5, tol=1e-2, max_iter=None, bounds=None):
     '''
     :param cost_fun: pointer to the cost function of the minimization problem
     :param n: number of dimensions
@@ -293,6 +296,8 @@ def ParticleSwarm(cost_fun, n, args=(), method='gbest', swarm_size=50, c1=2, c2=
     :param swarm_size: number of particles in a swarm
     :param c1: cognitive acceleration
     :param c2: social acceleration
+    :param weight: inertia weight
+    :param delta: velocity clamping factor
     :param tol: tolerance of the algorithm for stop criteria
     :param max_iter: total allowed iterations of the algorithm
     :param bounds: constraints of the problem
@@ -306,58 +311,62 @@ def ParticleSwarm(cost_fun, n, args=(), method='gbest', swarm_size=50, c1=2, c2=
 
     #handle iteration
     if max_iter is None:
-        max_iter = 100*n**2
+        max_iter = 400 #best performance overall
 
     #randomly generate the positions and velocities of the swarm
     bounds = (0,10)
     swarm_positions = np.random.uniform(bounds[0], bounds[1], size=(swarm_size, n)) #array to store the positions
     swarm_costs = cost_fun(swarm_positions, args) #compute the cost for the current particles
     swarm_velocities = np.random.uniform(bounds[0], bounds[1], size=(swarm_size, n)) #array to store the positions
+    P_best = np.copy(swarm_positions) #the best position found by each particle
+    cost_P_best = np.copy(swarm_costs) #the cost at the best position found by each particle
 
     if method == 'lbest':
-        P_best, cost_P_best = ring_topology(swarm_positions, swarm_costs) #find the best local particle in a neighborhood of 3
+        G_best, cost_G_best = ring_topology(P_best, cost_P_best) #find the best local particle in a neighborhood of 3
     elif method == 'gbest':
-        P_best = swarm_positions #the best position found by each particle
-        cost_P_best = swarm_costs #the cost at the best position found by each particle
+        idx_best = np.argmin(cost_P_best) #find the index of the best cost up until now
+        G_best = P_best[idx_best,:]*np.ones_like(swarm_positions) #find the position of the best particle in the swarm
 
-    idx_best = np.argmin(cost_P_best) #find the index of the best cost up until now
-    G_best = P_best[idx_best,:]*np.ones_like(swarm_positions) #find the position of the best particle in the swarm
-    old_best = 0 #variable to store the best cost in the last iteration
     n_iter = 0 #variable to monitor the iterations
-
     while True:
         #iteration stop criteria
         n_iter += 1
         if n_iter == max_iter:
             break
 
-        r1, r2 = np.random.uniform(0, 1, 2)  # random uniform values
+        r1,r2 = np.random.uniform(0, 1, 2) #random uniform values
         swarm_velocities = weight*swarm_velocities + c1*r1*(P_best-swarm_positions) + c2*r2*(G_best-swarm_positions) #evaluate the new velocity
+
+        #apply velocity clamping
+        v_max = delta*(bounds[1]-bounds[0])
+        swarm_velocities[swarm_velocities>=v_max] = v_max
+
         swarm_positions += swarm_velocities #update the positions given the velocity
+        swarm_positions = np.clip(swarm_positions, bounds[0], bounds[1]) #respect the bounds
         swarm_costs = cost_fun(swarm_positions, args) #update the costs
-
-        if method == 'lbest':
-            P_best, cost_P_best = ring_topology(swarm_positions, swarm_costs)
-
         cost_mask = swarm_costs<cost_P_best #find where the new positions return the better costs
         P_best[cost_mask] = swarm_positions[cost_mask] #update the best positions
-        P_best = np.clip(P_best, bounds[0], bounds[1]) #respect the bounds
+        cost_P_best[cost_mask] = swarm_costs[cost_mask] #update the best costs
 
         #handle CPE exponent constraints
         n_mask = P_best[:,6]>1
         P_best[n_mask,6] = 1*np.ones_like(n_mask[n_mask==True])
 
-        cost_P_best[cost_mask] = swarm_costs[cost_mask] #update the best costs
-        idx_best = np.argmin(cost_P_best) #find the new minimum
-        G_best = P_best[idx_best,:]*np.ones_like(swarm_positions) #update new global best
-
         if method == 'lbest':
-            if all(np.abs(cost_P_best - old_best)) < tol:
-               break
-            old_best = cost_P_best #update the last particle best costs
+            P_best, cost_P_best = ring_topology(P_best, cost_P_best)
+
+            #swarm distance stop criteria
+            swarm_dist = cdist(swarm_positions, swarm_positions) #compute the Euclidean distance between each particle
+            if np.mean(swarm_dist[:,0]) < tol*1e-2:
+                break
 
         elif method == 'gbest':
-            if np.abs(cost_P_best[idx_best] - old_best) < tol:
-              break
+            idx_best = np.argmin(cost_P_best) #find the new minimum
+            G_best = P_best[idx_best, :]*np.ones_like(swarm_positions) #update new global best
 
-    return G_best[0]
+            #swarm distance stop criteria
+            swarm_dist = cdist(swarm_positions, G_best) #compute the Euclidean distance between each particle and the global best
+            if np.mean(swarm_dist[:,0]) < tol:
+                break
+
+    return P_best[np.argmin(cost_P_best)]

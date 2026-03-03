@@ -19,7 +19,7 @@ circuits = {"Longo2020": {"guess": np.array([1, 1, 1, 1, 1, 1, 0.5, 1]),
                           "scale_NLLS": np.array([1e5, 1e-7, 1e6, 1e-2, 1e3, 1e-1, 1, 1]),
                           "scale_DLS": np.array([1e4, 1e-7, 1e6, 1e-2, 1e4, 1e-1, 1, 1]),
                           "scale_SIMPLEX": np.array([1e5, 1e-6, 1e7, 1e-2, 1e4, 1e-1, 1, 1]),
-                          "scale_PSO": np.array([1e5, 1e-6, 1e7, 1e-2, 1e4, 1e-1, 1, 1])},
+                          "scale_PSO": np.array([1e5, 1e-7, 1e7, 1e-2, 1e4, 1e-1, 1, 1])},
             "Zurich2021": {"guess": np.array([1, 1, 0.5, 1, 1, 1]),
                           "scale_BFGS": np.array([1e4, 1e-8, 1, 1e5, 1e3, 1e-8]),
                           "scale_NLLS": np.array([1e5, 1e-8, 1, 1e5, 1e3, 1e-8]),
@@ -51,7 +51,7 @@ init_guess_simplex = circuits[model]["guess"]
 scaling_array_simplex =  circuits[model]["scale_SIMPLEX"]
 
 init_guess_PSO = circuits[model]["guess"]
-scaling_array_PSO = circuits[model]["scale_BFGS"]
+scaling_array_PSO = circuits[model]["scale_PSO"]
 
 #Impedance fitting w/ BFGS
 fit_obj = fitting_utils.EquivalentCircuit(model, spec_obj, spec_obj.freqs) #equivalent circuit object
