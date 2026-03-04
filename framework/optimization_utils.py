@@ -287,7 +287,7 @@ def ring_topology(swarm_positions, swarm_costs):
 
     return swarm_positions, swarm_costs
 
-def ParticleSwarm(cost_fun, n, args=(), method='gbest', swarm_size=50, c1=2, c2=2, weight=0.8, delta=0.5, tol=1e-2, max_iter=None, bounds=None):
+def ParticleSwarm(cost_fun, n, args=(), method='gbest', swarm_size=50, c1=2, c2=2, weight=0.8, delta=0.5, tol=1e-4, max_iter=None, bounds=None):
     '''
     :param cost_fun: pointer to the cost function of the minimization problem
     :param n: number of dimensions
@@ -348,16 +348,12 @@ def ParticleSwarm(cost_fun, n, args=(), method='gbest', swarm_size=50, c1=2, c2=
         P_best[cost_mask] = swarm_positions[cost_mask] #update the best positions
         cost_P_best[cost_mask] = swarm_costs[cost_mask] #update the best costs
 
-        #handle CPE exponent constraints
-        n_mask = P_best[:,6]>1
-        P_best[n_mask,6] = 1*np.ones_like(n_mask[n_mask==True])
-
         if method == 'lbest':
-            P_best, cost_P_best = ring_topology(P_best, cost_P_best)
+            G_best, cost_G_best = ring_topology(P_best, cost_P_best)
 
             #swarm distance stop criteria
             swarm_dist = cdist(swarm_positions, swarm_positions) #compute the Euclidean distance between each particle
-            if np.mean(swarm_dist[:,0]) < tol*1e-2:
+            if np.linalg.norm(swarm_dist[:,0])<tol:
                 break
 
         elif method == 'gbest':
@@ -366,7 +362,7 @@ def ParticleSwarm(cost_fun, n, args=(), method='gbest', swarm_size=50, c1=2, c2=
 
             #swarm distance stop criteria
             swarm_dist = cdist(swarm_positions, G_best) #compute the Euclidean distance between each particle and the global best
-            if np.mean(swarm_dist[:,0]) < tol:
+            if np.linalg.norm(swarm_dist[:,0])<tol:
                 break
 
     return P_best[np.argmin(cost_P_best)]

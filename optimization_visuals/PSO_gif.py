@@ -3,6 +3,7 @@ import matplotlib
 matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation, PillowWriter
+from scipy.spatial.distance import cdist
 
 def ring_topology(swarm_positions, swarm_costs):
     left_neighbors_pos = np.roll(swarm_positions, 1, axis=0)
@@ -41,8 +42,8 @@ c2 = 2 #social acceleration
 max_iter = 100*n**2
 n_iter = 0
 weight = 0.8
-tol = 1e-6
-method = 'lbest'
+tol = 1e-4
+method = 'gbest'
 
 #randomly generate the positions and velocities of the swarm
 swarm_positions = np.random.uniform(bounds[0], bounds[1], size=(swarm_size,n)) #array to store the positions
@@ -86,13 +87,16 @@ while True:
     G_best = P_best[idx_best,:]*np.ones_like(swarm_positions) #update new global best
 
     if method == 'lbest':
-        if all(np.abs(cost_P_best-old_best)) < tol:
+        # swarm distance stop criteria
+        swarm_dist = cdist(swarm_positions, G_best)  # compute the Euclidean distance between each particle and the global best
+        if np.mean(swarm_dist[:, 0]) < tol:
             break
-        old_best = cost_P_best  # update the last particle best costs
 
     elif method == 'gbest':
-        if np.abs(cost_P_best[idx_best]-old_best)<tol:
-           break
+        # swarm distance stop criteria
+        swarm_dist = cdist(swarm_positions, G_best)  # compute the Euclidean distance between each particle and the global best
+        if np.mean(swarm_dist[:, 0]) < tol:
+            break
 
 points = np.array(points) #convert points to array
 swarms = np.array(swarms) #convert swarms to array
@@ -114,4 +118,4 @@ def animate(i):
     return rosen_image, curr_swarm, guess, true_min
 
 ani = FuncAnimation(fig, animate, interval=40, blit=True, repeat=True, frames=points.shape[0])
-#ani.save("./PSO_lbest.gif", dpi=300, writer=PillowWriter(fps=25))
+ani.save(f"./PSO_{method}.gif", dpi=300, writer=PillowWriter(fps=25))

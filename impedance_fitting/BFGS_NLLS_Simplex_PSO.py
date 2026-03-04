@@ -19,25 +19,28 @@ circuits = {"Longo2020": {"guess": np.array([1, 1, 1, 1, 1, 1, 0.5, 1]),
                           "scale_NLLS": np.array([1e5, 1e-7, 1e6, 1e-2, 1e3, 1e-1, 1, 1]),
                           "scale_DLS": np.array([1e4, 1e-7, 1e6, 1e-2, 1e4, 1e-1, 1, 1]),
                           "scale_SIMPLEX": np.array([1e5, 1e-6, 1e7, 1e-2, 1e4, 1e-1, 1, 1]),
-                          "scale_PSO": np.array([1e5, 1e-7, 1e7, 1e-2, 1e4, 1e-1, 1, 1])},
+                          "scale_PSO": np.array([1e3, 1e-7, 1e6, 1e-2, 1e3, 1e-1, 1, 1])},
             "Zurich2021": {"guess": np.array([1, 1, 0.5, 1, 1, 1]),
                           "scale_BFGS": np.array([1e4, 1e-8, 1, 1e5, 1e3, 1e-8]),
                           "scale_NLLS": np.array([1e5, 1e-8, 1, 1e5, 1e3, 1e-8]),
                           "scale_DLS": np.array([1e5, 1e-8, 1, 1e4, 1e3, 1e-8]),
-                          "scale_SIMPLEX": np.array([1e5, 1e-8, 1, 1e5, 1e3, 1e-7])},
+                          "scale_SIMPLEX": np.array([1e5, 1e-8, 1, 1e5, 1e3, 1e-7]),
+                           "scale_PSO":np.array([1e5, 1e-8, 1, 1e6, 1e3, 1e-10])},
             "Zhang2024": {"guess": np.array([1, 0.5, 1, 1, 1, 1]),
                           "scale_BFGS": np.array([1e-9, 1, 1e6, 1e3, 1e2, 1e-8]),
                           "scale_NLLS": np.array([1e-9, 1, 1e6, 1e3, 1e2, 1e-8]),
                           "scale_DLS":  np.array([1e-9, 1, 1e6, 1e3, 1e4, 1e-8]),
-                          "scale_SIMPLEX": np.array([1e-7, 1, 1e5, 1e5, 1e4, 1e-8])},
+                          "scale_SIMPLEX": np.array([1e-7, 1, 1e5, 1e5, 1e4, 1e-8]),
+                          "scale_PSO": np.array([1e-9, 1, 1e6, 1e6, 1e3, 1e-6])},
             "Yang2025": {"guess": np.array([1, 1, 1, 0.5, 1, 1]),
                           "scale_BFGS": np.array([1e4, 1e5, 1e-9, 1, 1e4, 1e-8]),
                           "scale_NLLS": np.array([1e4, 1e5, 1e-9, 1, 1e4, 1e-8]),
                           "scale_DLS":  np.array([1e4, 1e4, 1e-9, 1, 1e4, 1e-8]),
-                          "scale_SIMPLEX": np.array([1e3, 1e4, 1e-9, 1, 1e4, 1e-8])}} #list of circuits to attempt fitting the data
+                          "scale_SIMPLEX": np.array([1e3, 1e4, 1e-9, 1, 1e4, 1e-8]),
+                          "scale_PSO": np.array([1e4, 1e7, 1e-9, 1, 1e3, 1e-6])}} #list of circuits to attempt fitting the data
 
 #minimizer arguments
-model = "Longo2020"
+model = "Zurich2021"
 init_guess_BFGS = circuits[model]["guess"]
 scaling_array_BFGS = circuits[model]["scale_BFGS"]
 
@@ -59,7 +62,7 @@ fit_params_BFGS = fit_obj.fit_circuit(init_guess_BFGS, scaling_array_BFGS, metho
 fit_params_NLLS = fit_obj.fit_circuit(init_guess_NLLS, scaling_array_NLLS, method="NLLS", verbose=True)
 fit_params_DLS = fit_obj.fit_circuit(init_guess_DLS, scaling_array_DLS, method="DLS", verbose=True)
 fit_params_simplex = fit_obj.fit_circuit(init_guess_simplex, scaling_array_simplex, method="Nelder-Mead", verbose=True)
-fit_params_PSO = fit_obj.fit_circuit(np.zeros(shape=(8,)), scaling_array_PSO, method="PSO", verbose=True)
+fit_params_PSO = fit_obj.fit_circuit(np.zeros(shape=(len(circuits[model]["guess"]),)), scaling_array_PSO, method="PSO", verbose=True)
 
 #plot
 fig, ax = plt.subplots()
@@ -76,16 +79,16 @@ ax.plot(fit_params_simplex.opt_fit.real, -fit_params_simplex.opt_fit.imag, color
 leg.append('Nelder-Mead Simplex')
 ax.plot(fit_params_PSO.opt_fit.real, -fit_params_PSO.opt_fit.imag, color="tab:brown")
 leg.append('PSO')
-# x1, x2, y1, y2 = -1000, 10000, 1000, 12000
-# axins = ax.inset_axes([0.5, 0.18, 0.4, 0.4],
-#                       xlim=(x1, x2), ylim=(y1, y2))
-# axins.scatter(fit_obj.z_meas_real, fit_obj.z_meas_imag, marker='o', color="tab:blue")
-# axins.plot(fit_params_BFGS.opt_fit.real, -fit_params_BFGS.opt_fit.imag, color="tab:orange")
-# axins.plot(fit_params_NLLS.opt_fit.real, -fit_params_NLLS.opt_fit.imag, color="tab:green")
-# axins.plot(fit_params_DLS.opt_fit.real, -fit_params_DLS.opt_fit.imag, color="tab:purple")
-# axins.plot(fit_params_simplex.opt_fit.real, -fit_params_simplex.opt_fit.imag, color="tab:red")
-# ax.plot(fit_params_PSO.opt_fit.real, -fit_params_PSO.opt_fit.imag, color="tab:brown")
-# ax.indicate_inset_zoom(axins, edgecolor="black", linewidth=1.5)
+x1, x2, y1, y2 = -1000, 10000, 1000, 12000
+axins = ax.inset_axes([0.5, 0.18, 0.4, 0.4],
+                      xlim=(x1, x2), ylim=(y1, y2))
+axins.scatter(fit_obj.z_meas_real, fit_obj.z_meas_imag, marker='o', color="tab:blue")
+axins.plot(fit_params_BFGS.opt_fit.real, -fit_params_BFGS.opt_fit.imag, color="tab:orange")
+axins.plot(fit_params_NLLS.opt_fit.real, -fit_params_NLLS.opt_fit.imag, color="tab:green")
+axins.plot(fit_params_DLS.opt_fit.real, -fit_params_DLS.opt_fit.imag, color="tab:purple")
+axins.plot(fit_params_simplex.opt_fit.real, -fit_params_simplex.opt_fit.imag, color="tab:red")
+axins.plot(fit_params_PSO.opt_fit.real, -fit_params_PSO.opt_fit.imag, color="tab:brown")
+ax.indicate_inset_zoom(axins, edgecolor="black", linewidth=1.5)
 plt.xlabel("Z'")
 plt.ylabel("Z''")
 plt.legend(leg)
