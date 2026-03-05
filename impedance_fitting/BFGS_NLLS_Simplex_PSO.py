@@ -40,7 +40,7 @@ circuits = {"Longo2020": {"guess": np.array([1, 1, 1, 1, 1, 1, 0.5, 1]),
                           "scale_PSO": np.array([1e4, 1e7, 1e-9, 1, 1e3, 1e-6])}} #list of circuits to attempt fitting the data
 
 #minimizer arguments
-model = "Zurich2021"
+model = "Longo2020"
 init_guess_BFGS = circuits[model]["guess"]
 scaling_array_BFGS = circuits[model]["scale_BFGS"]
 
