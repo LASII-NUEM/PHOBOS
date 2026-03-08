@@ -27,7 +27,7 @@ class MonteCarloFit:
         #validate 'n_spectra'
         if n_spectra<=0:
             raise ValueError('[MonteCarloFit] n_spectra must be greater than 0!')
-        self.n_spectra = n_spectra
+        self.n_spectra = int(n_spectra)
         self.noise_var = noise_var
 
         #validate freqs
@@ -48,10 +48,11 @@ class MonteCarloFit:
         # Journal of Energy Storage. 2024; 82:110389. https://doi.org/10.1016/j.est.2023.110389
 
         #zero-mean uncorrelated circularly-symmetric Gaussian noise
-        noise_real_part = np.random.normal(0, self.noise_var/np.sqrt(2), size=(self.n_spectra, len(self.Z_simu)))
-        noise_imag_part = np.random.normal(0, self.noise_var/np.sqrt(2), size=(self.n_spectra, len(self.Z_simu)))
+        noise_real_part = np.random.normal(0, self.noise_var/1, size=(self.n_spectra, len(self.Z_simu)))
+        noise_imag_part = np.random.normal(0, self.noise_var/1, size=(self.n_spectra, len(self.Z_simu)))
         self.Z_noise = (self.Z_simu.real+noise_real_part)-1j*(self.Z_simu.imag+noise_imag_part) #Gaussian-noise-corrupted samples
         self.Z_noise = self.Z_noise.astype("complex")
+        #self.CramerRao = CramerRaoBound(self.circuit_impedance, self.theta, )
 
     def fit_simulations(self, initial_guess:np.ndarray, scaling_array:np.ndarray, method:str, verbose=False, plot=False):
         '''
@@ -82,13 +83,14 @@ class MonteCarloFit:
             theta_fit[i,:] = fit_params.opt_params_scaled #store the optimal parameters of the current iteration
 
         if plot:
+            plt.figure()
             leg = []
             for i in range(0, self.n_spectra):
-                plt.scatter(self.Z_noise.real[i, :], self.Z_noise.imag[i, :], c='black', s=8)
-                plt.plot(Z_fit.real[i, :], -Z_fit.imag[i, :], color='red', linewidth=1)
+                plt.plot(Z_fit.real[i, :], -Z_fit.imag[i, :], color='red', linewidth=1, zorder=2)
+                plt.scatter(self.Z_noise.real[i, :], self.Z_noise.imag[i, :], c='black', s=8, zorder=1)
                 if i == self.n_spectra-1:
-                    leg.append('Simulated Spectra')
                     leg.append('Fit')
+                    leg.append('Simulated Spectra')
             plt.xlabel("Z'")
             plt.ylabel("Z''")
             plt.legend(leg)
@@ -111,12 +113,22 @@ class MonteCarloFit:
         theta_var = (1/(self.n_spectra*(self.n_spectra-1)))*theta_sse #variance
         theta_std = np.sqrt(theta_var) #standard deviation
 
+        #compute the mean absolute percentage error
+        Z_fit = Z_fit.astype("complex")
+        p_error_real = np.abs(self.Z_noise.real-Z_fit.real)/np.abs(self.Z_noise.real)
+        mape_real = 100*np.mean(np.mean(p_error_real, axis=1)) #mean of the mean percentage error between fits
+        p_error_imag= np.abs(self.Z_noise.imag-np.abs(Z_fit.imag))/np.abs(self.Z_noise.imag)
+        mape_imag = 100*np.mean(np.mean(p_error_imag, axis=1)) #mean of the mean percentage error between fits
+
         if verbose:
             params = fitting_utils.function_handlers[self.topology.lower()]["fit_params"]
             for i in range(0, len(self.theta)):
                 print(f'[{params[i]}] estimated: {theta_mean[i]}±{theta_std[i]} / true: {self.theta[i]}')
 
-        return theta_mean, theta_std
+        print(f'[MAPE real] {mape_real}')
+        print(f'[MAPE imag] {mape_imag}')
+
+        return theta_mean, mape_imag
 
 def compute_Jacobian(z_fun, theta:np.ndarray, y_hat:np.ndarray, delta=1e-3, args=()):
     '''

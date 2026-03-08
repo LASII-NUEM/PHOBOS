@@ -15,9 +15,9 @@ spec_obj.n_freqs = len(spec_obj.freqs)
 
 #initial arguments
 circuits = {"Longo2020": {"guess": np.array([1, 1, 1, 1, 1, 1, 0.5, 1]),
-                          "scale_BFGS": np.array([1e5, 1e-7, 1e6, 1e-2, 1e3, 1e-1, 1, 1]),
+                          "scale_BFGS": np.array([1e3, 1e-7, 1e6, 1e-2, 1e3, 1e-1, 1, 1]),
                           "scale_NLLS": np.array([1e5, 1e-7, 1e6, 1e-2, 1e3, 1e-1, 1, 1]),
-                          "scale_DLS": np.array([1e4, 1e-7, 1e6, 1e-2, 1e4, 1e-1, 1, 1]),
+                          "scale_DLS": np.array([1e5, 1e-7, 1e6, 1e-2, 1e3, 1e-1, 1, 1]),
                           "scale_SIMPLEX": np.array([1e5, 1e-6, 1e7, 1e-2, 1e4, 1e-1, 1, 1]),
                           "scale_PSO": np.array([1e3, 1e-7, 1e6, 1e-2, 1e3, 1e-1, 1, 1])},
             "Zurich2021": {"guess": np.array([1, 1, 0.5, 1, 1, 1]),

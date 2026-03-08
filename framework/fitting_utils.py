@@ -7,19 +7,19 @@ from impedance_fitting import script_to_overwrite_local_impedancedotpy_files
 
 #dictionary to handle function calls -> number of expected params and the function pointer
 function_handlers = {
-    "longo2020": {"n_params": 8, "function_ptr": equivalent_circuits.Longo2020, "partial_function_ptr": equivalent_circuits.Longo2020_partial, "bounds": [(0,np.inf), (0,np.inf), (0,np.inf), (0,np.inf), (0,np.inf), (0,np.inf), (0,1), (0,np.inf)],
+    "longo2020": {"n_params": 8, "function_ptr": equivalent_circuits.Longo2020, "partial_function_ptr": equivalent_circuits.Longo2020_partial, "bounds": [(0,10), (0,10), (0,10), (0,10), (0,10), (0,10), (0,1), (0,10)],
                   "fit_params": ['R1', 'tau1', 'R2', 'tau2', 'R3', 'tau3', 'n3', 'tau4']},
-    "fouquet2005": {"n_params": 6, "function_ptr": equivalent_circuits.Fouquet2005, "partial_function_ptr": equivalent_circuits.Fouquet2005_partial, "bounds": [(0,np.inf), (0,np.inf), (0,np.inf), (0,1), (0,np.inf), (0,np.inf)],
+    "fouquet2005": {"n_params": 6, "function_ptr": equivalent_circuits.Fouquet2005, "partial_function_ptr": equivalent_circuits.Fouquet2005_partial, "bounds": [(0,10), (0,10), (0,10), (0,1), (0,10), (0,10)],
                     "fit_params": ['R1', 'R2', 'Q', 'n', 'Rd', 'taud']},
-    "zurich2021": {"n_params": 6, "function_ptr": equivalent_circuits.Zurich2021, "partial_function_ptr": equivalent_circuits.Zurich2021_partial, "bounds": [(0,np.inf), (0,np.inf), (0,1), (0,np.inf), (0,np.inf), (0,np.inf)],
+    "zurich2021": {"n_params": 6, "function_ptr": equivalent_circuits.Zurich2021, "partial_function_ptr": equivalent_circuits.Zurich2021_partial, "bounds": [(0,10), (0,10), (0,1), (0,10), (0,10), (0,10)],
                    "fit_params": ["R1", "Q", "n", "Zws", "R2", "C"]},
-    "awayssa2025": {"n_params": 5, "function_ptr": equivalent_circuits.Awayssa2025, "partial_function_ptr": equivalent_circuits.Awayssa2025_partial, "bounds": [(0,np.inf), (0,np.inf), (0,np.inf), (0,np.inf), (0,np.inf)],
+    "awayssa2025": {"n_params": 5, "function_ptr": equivalent_circuits.Awayssa2025, "partial_function_ptr": equivalent_circuits.Awayssa2025_partial, "bounds": [(0,10), (0,10), (0,10), (0,10), (0,10)],
                     "fit_params": ["R1", "R2", "C1", "L1", "C2"]},
-    "hong2021": {"n_params": 7, "function_ptr": equivalent_circuits.Hong2021, "partial_function_ptr": equivalent_circuits.Hong2021_partial, "bounds": [(0,np.inf), (0,np.inf), (0,1), (0,np.inf), (0,np.inf), (0,1), (0,np.inf)],
+    "hong2021": {"n_params": 7, "function_ptr": equivalent_circuits.Hong2021, "partial_function_ptr": equivalent_circuits.Hong2021_partial, "bounds": [(0,10), (0,10), (0,1), (0,10), (0,10), (0,1), (0,10)],
                  "fit_params": ["R1", "Q1", "n1", "R2", "Q2", "n2", "R3"]},
-    "yang2025": {"n_params": 6, "function_ptr": equivalent_circuits.Yang2025, "partial_function_ptr": equivalent_circuits.Yang2025_partial, "bounds": [(0, np.inf), (0, np.inf), (0, np.inf), (0, 1), (0, np.inf), (0, np.inf)],
+    "yang2025": {"n_params": 6, "function_ptr": equivalent_circuits.Yang2025, "partial_function_ptr": equivalent_circuits.Yang2025_partial, "bounds": [(0, 10), (0, 10), (0, 10), (0, 1), (0, 10), (0, 10)],
                  "fit_params": ["R1", "R2", "Q", "n", "Rd", "taud"]},
-    "zhang2024": {"n_params": 6, "function_ptr": equivalent_circuits.Zhang2024, "partial_function_ptr": equivalent_circuits.Zhang2024_partial, "bounds": [(0, np.inf), (0, 1), (0, np.inf), (0, np.inf), (0, np.inf), (0, np.inf)],
+    "zhang2024": {"n_params": 6, "function_ptr": equivalent_circuits.Zhang2024, "partial_function_ptr": equivalent_circuits.Zhang2024_partial, "bounds": [(0, 10), (0, 1), (0, 10), (0, 10), (0, 10), (0, 10)],
                   "fit_params": ["Q", "n", "R1", "R2", "Rd", "taud"]}
 }
 
@@ -235,8 +235,8 @@ class EquivalentCircuit:
             n_runs = 40
             best_obj = None #variable to store the 'fit_obj' with the best accuracy
             best_hat = None #varaible to store the fitted impendace with the best accuracy
-            best_nmse = np.inf #variable to store the best nmse
-            best_chisqr = np.inf #variable to store the best chi-square
+            best_nmse = 10 #variable to store the best nmse
+            best_chisqr = 10 #variable to store the best chi-square
             for i in range(0,n_runs):
                 fit_obj = optimization_utils.ParticleSwarm(self.CUMSE, function_handlers[self.topology]["n_params"], swarm_size=50, method='lbest', args=([self.z_meas, omega, scaling_array]), bounds=bounds)
                 opt_fit = self.circuit_impedance(fit_obj, [omega, scaling_array]) #compute the circuit for the optimal values
