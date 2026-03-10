@@ -79,7 +79,7 @@ class MediumData:
                 curr_fit_obj = fitting_utils.EquivalentCircuit(circuit, data_medium, freqs)
 
                 #fit using the gradient-based method (BFGS)
-                curr_fit_params_BFGS = curr_fit_obj.fit_circuit(curr_fit_attributes["guess"], curr_fit_attributes["scale_BFGS"], method="BFGS")
+                curr_fit_params_BFGS = curr_fit_obj.fit_circuit(curr_fit_attributes["guess"], curr_fit_attributes["ice_scale_BFGS"], method="BFGS")
                 z_hat_real_BFGS = curr_fit_params_BFGS.opt_fit.real #real part of the fitting
                 z_hat_imag_BFGS = curr_fit_params_BFGS.opt_fit.imag #imaginary part of the fitting
                 if z_hat_imag_BFGS.ndim ==1:
@@ -92,7 +92,7 @@ class MediumData:
                 #fit using the non-linear-least-squares-based method (NLLS)
                 #hacky-fix: scipy's curve fit has an issue that when the total iterations are reached without convergence, it raises an error
                 try:
-                    curr_fit_params_NLLS = curr_fit_obj.fit_circuit(curr_fit_attributes["guess"], curr_fit_attributes["scale_NLLS"], method="NLLS")
+                    curr_fit_params_NLLS = curr_fit_obj.fit_circuit(curr_fit_attributes["guess"], curr_fit_attributes["ice_scale_NLLS"], method="NLLS")
                     z_hat_real_NLLS = curr_fit_params_NLLS.opt_fit.real
                     z_hat_imag_NLLS = curr_fit_params_NLLS.opt_fit.imag
                     if z_hat_imag_NLLS.ndim == 1:
@@ -110,7 +110,7 @@ class MediumData:
 
                 # fit using the damped least-squares algorithm (DLS)
                 try:
-                    curr_fit_params_DLS = curr_fit_obj.fit_circuit(curr_fit_attributes["guess"], curr_fit_attributes["scale_DLS"], method="DLS")
+                    curr_fit_params_DLS = curr_fit_obj.fit_circuit(curr_fit_attributes["guess"], curr_fit_attributes["ice_scale_DLS"], method="DLS")
                     z_hat_real_DLS = curr_fit_params_DLS.opt_fit.real  # real part of the fitting
                     z_hat_imag_DLS = curr_fit_params_DLS.opt_fit.imag  # imaginary part of the fitting
                     if z_hat_imag_DLS.ndim == 1:
@@ -127,7 +127,7 @@ class MediumData:
                     t_DLS = None
 
                 #fit using the Nelder-Mead Simplex method
-                curr_fit_params_simplex = curr_fit_obj.fit_circuit(curr_fit_attributes["guess"], curr_fit_attributes["scale_SIMPLEX"], method="Nelder-Mead")
+                curr_fit_params_simplex = curr_fit_obj.fit_circuit(curr_fit_attributes["guess"], curr_fit_attributes["ice_scale_SIMPLEX"], method="Nelder-Mead")
                 z_hat_real_simplex = curr_fit_params_simplex.opt_fit.real #real part of the fitting
                 z_hat_imag_simplex = curr_fit_params_simplex.opt_fit.imag #imaginary part of the fitting
                 if z_hat_imag_simplex.ndim == 1:
@@ -365,6 +365,7 @@ class BatchImpedanceFit:
             else:
                 raise TypeError(f'[BatchImpedanceFit] Frequency threshold must be an integer or float!')
 
+        #self.circuits = circuits
         self.circuits = circuits
         self.media_obj = file_lcr.read(filename, n_samples=n_samples, electrode=electrode, acquisition_mode="freq", aggregate=aggregate, timezone=timezone)
 
@@ -439,13 +440,23 @@ class BatchImpedanceFit:
                 curr_fit_obj = fitting_utils.EquivalentCircuit(circuit, [curr_z_real, curr_z_imag], freqs)
 
                 #fit using the gradient-based method (BFGS)
-                curr_fit_params_BFGS = curr_fit_obj.fit_circuit(curr_fit_attributes["guess"], curr_fit_attributes["scale_BFGS"], method="BFGS")
+                curr_fit_params_BFGS_ice = curr_fit_obj.fit_circuit(curr_fit_attributes["guess"], curr_fit_attributes["ice_scale_BFGS"], method="BFGS")
+                nmse_BFGS_ice = curr_fit_params_BFGS_ice.nmse_score
+                curr_fit_params_BFGS_water = curr_fit_obj.fit_circuit(curr_fit_attributes["guess"], curr_fit_attributes["water_scale_BFGS"], method="BFGS")
+                nmse_BFGS_water = curr_fit_params_BFGS_water.nmse_score
+
+                if nmse_BFGS_ice <= nmse_BFGS_water:
+                    curr_fit_params_BFGS = curr_fit_params_BFGS_ice
+                    nmse_BFGS = nmse_BFGS_ice
+                else:
+                    curr_fit_params_BFGS = curr_fit_params_BFGS_water
+                    nmse_BFGS = nmse_BFGS_water
+
                 z_hat_real_BFGS = curr_fit_params_BFGS.opt_fit.real #real part of the fitting
                 z_hat_imag_BFGS = curr_fit_params_BFGS.opt_fit.imag #imaginary part of the fitting
-                nmse_BFGS = curr_fit_params_BFGS.nmse_score
-                chi_sqr_BFGS = curr_fit_params_BFGS.chi_square
                 t_BFGS = curr_fit_params_BFGS.t_elapsed
                 params_BFGS = curr_fit_params_BFGS.opt_params_scaled
+                chi_sqr_BFGS = curr_fit_params_BFGS_water.chi_square
 
                 #fit using the non-linear-least-squares-based method (NLLS)
                 #hacky-fix: scipy's curve fit has an issue that when the total iterations are reached without convergence, it raises an error
@@ -483,7 +494,7 @@ class BatchImpedanceFit:
                     params_DLS = np.zeros_like(params_BFGS)
 
                 #fit using the Nelder-Mead Simplex method
-                curr_fit_params_simplex = curr_fit_obj.fit_circuit(curr_fit_attributes["guess"],  curr_fit_attributes["scale_SIMPLEX"], method="Nelder-Mead")
+                curr_fit_params_simplex = curr_fit_obj.fit_circuit(curr_fit_attributes["guess"],  curr_fit_attributes["ice_scale_SIMPLEX"], method="Nelder-Mead")
                 z_hat_real_simplex = curr_fit_params_simplex.opt_fit.real #real part of the fitting
                 z_hat_imag_simplex = curr_fit_params_simplex.opt_fit.imag #imaginary part of the fitting
                 nmse_simplex = curr_fit_params_simplex.nmse_score
