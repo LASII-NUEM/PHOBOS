@@ -1,4 +1,6 @@
 import numpy as np
+
+import framework.batch_utils
 from framework import data_types
 
 def dielectric_params_generic(data_medium:data_types.SpectroscopyData, data_air:data_types.SpectroscopyData, freqs:np.ndarray):
@@ -10,7 +12,7 @@ def dielectric_params_generic(data_medium:data_types.SpectroscopyData, data_air:
     '''
 
     #validate data_medium
-    expected_types = [data_types.SpectroscopyData, data_types.CommercialCellData]
+    expected_types = [data_types.SpectroscopyData, data_types.CommercialCellData, framework.batch_utils.MediumData]
     if type(data_medium) not in expected_types:
         raise TypeError(f'[dielectric_params_generic] "data_medium" must be a SpectrumData structure! Curr. type = {type(data_medium)}')
 
@@ -40,12 +42,12 @@ def dielectric_params_corrected(data_medium:data_types.SpectroscopyData, data_ai
     '''
 
     #validate data_medium
-    expected_types = [data_types.SpectroscopyData, data_types.CommercialCellData]
+    expected_types = [data_types.SpectroscopyData, data_types.CommercialCellData, framework.batch_utils.MediumData]
     if type(data_medium) not in expected_types:
         raise TypeError(f'[dielectric_params_corrected] "data_medium" must be a SpectrumData structure! Curr. type = {type(data_medium)}')
 
     #validate data_air
-    expected_types = [data_types.SpectroscopyData, data_types.CommercialCellData]
+    expected_types = [data_types.SpectroscopyData, data_types.CommercialCellData, framework.batch_utils.MediumData]
     if type(data_air) not in expected_types:
         raise TypeError(
             f'[dielectric_params_corrected] "data_air" must be a SpectrumData structure! Curr. type = {type(data_air)}')
@@ -107,7 +109,7 @@ def complex_impedance(data_medium:data_types.SpectroscopyData, freqs:np.ndarray)
     '''
 
     #validate data_medium
-    expected_types = [data_types.SpectroscopyData, data_types.CommercialCellData, data_types.PHOBOSData]
+    expected_types = [data_types.SpectroscopyData, data_types.CommercialCellData, data_types.PHOBOSData, framework.batch_utils.MediumData]
     if type(data_medium) not in expected_types:
         raise TypeError(f'[dielectric_params_generic] "data_medium" must be a SpectrumData structure! Curr. type = {type(data_medium)}')
 
@@ -134,12 +136,12 @@ def complex_conductivity(data_medium:data_types.SpectroscopyData, data_air:data_
     '''
 
     #validate data_medium
-    expected_types = [data_types.SpectroscopyData, data_types.CommercialCellData]
+    expected_types = [data_types.SpectroscopyData, data_types.CommercialCellData, framework.batch_utils.MediumData]
     if type(data_medium) not in expected_types:
         raise TypeError(f'[dielectric_params_generic] "data_medium" must be a SpectrumData structure! Curr. type = {type(data_medium)}')
 
     #validate data_air
-    expected_types = [data_types.SpectroscopyData, data_types.CommercialCellData]
+    expected_types = [data_types.SpectroscopyData, data_types.CommercialCellData, framework.batch_utils.MediumData]
     if type(data_air) not in expected_types:
         raise TypeError(f'[dielectric_params_generic] "data_air" must be a SpectrumData structure! Curr. type = {type(data_air)}')
 
@@ -168,12 +170,12 @@ def dielectric_modulus(data_medium:data_types.SpectroscopyData, data_air:data_ty
     '''
 
     #validate data_medium
-    expected_types = [data_types.SpectroscopyData, data_types.CommercialCellData]
+    expected_types = [data_types.SpectroscopyData, data_types.CommercialCellData, framework.batch_utils.MediumData]
     if type(data_medium) not in expected_types:
         raise TypeError(f'[dielectric_params_generic] "data_medium" must be a SpectrumData structure! Curr. type = {type(data_medium)}')
 
     #validate data_air
-    expected_types = [data_types.SpectroscopyData, data_types.CommercialCellData]
+    expected_types = [data_types.SpectroscopyData, data_types.CommercialCellData, framework.batch_utils.MediumData]
     if type(data_air) not in expected_types:
         raise TypeError(f'[dielectric_params_generic] "data_air" must be a SpectrumData structure! Curr. type = {type(data_air)}')
 

@@ -31,12 +31,13 @@ class MediumData:
         self.topology = topology
         self.media = media
         self.media_obj = data_medium #forward SpectroscopyData attributes to the MediumData class
+        self.freqs = self.media_obj.freqs
         self.eps_real, self.eps_imag = eps_func(data_medium, data_air, data_medium.freqs) #compute the permittivity based on the 'eps_func' argument
         self.z_real, self.z_imag = characterization_utils.complex_impedance(data_medium, data_medium.freqs) #compute the impedance
         self.sigma_real, self.sigma_imag = characterization_utils.complex_conductivity(data_medium, data_air, data_medium.freqs, eps_func=eps_func) #compute the conductivity
 
-        if isinstance(data_medium, data_types.SpectroscopyData):
-            self.fit_data = self.batch_fit_circuit(topology, data_medium, data_medium.freqs)
+        #if isinstance(data_medium, data_types.SpectroscopyData):
+        #    self.fit_data = self.batch_fit_circuit(topology, data_medium, data_medium.freqs)
 
     def batch_fit_circuit(self, topology:dict, data_medium:data_types.SpectroscopyData, freqs:np.ndarray):
         '''
