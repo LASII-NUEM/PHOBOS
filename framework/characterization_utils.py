@@ -107,7 +107,7 @@ def complex_impedance(data_medium:data_types.SpectroscopyData, freqs:np.ndarray)
     '''
 
     #validate data_medium
-    expected_types = [data_types.SpectroscopyData, data_types.CommercialCellData]
+    expected_types = [data_types.SpectroscopyData, data_types.CommercialCellData, data_types.PHOBOSData]
     if type(data_medium) not in expected_types:
         raise TypeError(f'[dielectric_params_generic] "data_medium" must be a SpectrumData structure! Curr. type = {type(data_medium)}')
 
